@@ -1,0 +1,73 @@
+# Vazifalar — 3 konteyner, tashqariga FAQAT bitta port ochiladi (frontend/Nginx).
+#
+#   Brauzer ──► http://SERVER_IP:APP_PORT ──► frontend (Nginx :80)
+#                                                ├── /        → statik HTML/CSS/JS
+#                                                └── /api/... → backend (Node.js :3000) ──► db (PostgreSQL :5432)
+#                                                                  │
+#                                                                  ├──► api.anthropic.com (AI)
+#                                                                  └──► api.telegram.org  (bot, long polling)
+#
+# backend va db'da "ports:" YO'Q — ular faqat Docker ichki tarmog'ida ko'rinadi.
+# Telegram bot ham webhook emas, long polling ishlatadi — shuning uchun domen/HTTPS kerak emas.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vazifalar}
+      POSTGRES_USER: ${POSTGRES_USER:-vazifalar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env faylida berilmagan}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-vazifalar}
+      PGUSER: ${POSTGRES_USER:-vazifalar}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env faylida berilmagan}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET .env faylida berilmagan}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Tashkent}
+      QUIET_HOURS: ${QUIET_HOURS-23-7}
+      DAILY_SUMMARY_HOUR: ${DAILY_SUMMARY_HOUR-21}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # "localhost" emas, 127.0.0.1: Alpine'da localhost avval IPv6 (::1) ga ketadi,
+      # Node esa 0.0.0.0 (IPv4) da tinglaydi → "Connection refused" va konteyner "unhealthy" bo'lib qoladi.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db_data:

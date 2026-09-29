@@ -1,0 +1,26 @@
+{
+  "name": "vazifalar-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vazifalar — muhimlik bo'yicha saralanadigan vazifalar, AI yordamchi va Telegram eslatmalar (API)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/time.test.js test/reports.test.js test/api.test.js test/reminders.test.js test/telegram.test.js test/ai.test.js test/frontend.test.js",
+    "dev:memory": "node dev/memory-server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
+    "bcryptjs": "^3.0.3",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "pg-mem": "^3.0.14"
+  }
+}

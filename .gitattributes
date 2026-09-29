@@ -1,0 +1,4 @@
+# Windows'da tahrirlangan fayllar Linux serverda buzilmasligi uchun (CRLF → "\r: command not found").
+* text=auto eol=lf
+*.png binary
+*.jpg binary

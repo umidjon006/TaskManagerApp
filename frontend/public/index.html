@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Vazifalar">
+  <meta name="description" content="Muhimlik bo'yicha saralanadigan vazifalar, hisobotlar, AI va Telegram eslatmalar">
+  <title>Vazifalar</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <link rel="stylesheet" href="/style.css?v=4">
+</head>
+<body>
+  <!-- ============ Ikonkalar (bitta chiziqli oila, 24×24) ============ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 4.8M3.5 12l1.2 1.2L7 10.8"/><circle cx="5" cy="18" r="1.3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="5.5" y="11" width="3" height="6.5" rx="1"/><rect x="10.5" y="6" width="3" height="11.5" rx="1"/><rect x="15.5" y="9" width="3" height="8.5" rx="1"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5L18 7M9 7V4.5h6V7"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3.5 13.8 9l5.7 1.8-5.7 1.9L12 18.5l-1.8-5.8L4.5 10.8 10.2 9z"/><path d="M19 3v3.5M17.2 4.8h3.6"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 3 10.5l7 2.5 2.5 7z"/><path d="m10 13 5-5"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c3.9 0 6.5-2.6 6.5-6.3 0-4.2-3.4-6.1-4.3-10.2-2.3 1.6-3.4 3.7-3.3 6.2-1-.4-1.8-1.4-2.1-2.6C7 9.8 5.5 12 5.5 14.7 5.5 18.4 8.1 21 12 21z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2.2 2.2 0 0 0 4 0"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H14M10 12h10.5M17 8.5l3.5 3.5-3.5 3.5"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 16.8v.2"/></symbol>
+    <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M6.5 3.5h11M6.5 20.5h11M7.5 3.5c0 5 9 5.5 9 8.5s-9 3.5-9 8.5M16.5 3.5c0 5-9 5.5-9 8.5s9 3.5 9 8.5"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M10 9.5v10"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/><path d="M9.5 3v3.5M14.5 3v3.5M9.5 17.5V21M14.5 17.5V21M3 9.5h3.5M3 14.5h3.5M17.5 9.5H21M17.5 14.5H21"/></symbol>
+    <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 8.4 7.2"/></symbol>
+  </svg>
+
+  <!-- ============ Kirish ============ -->
+  <section id="authScreen" class="auth hidden" aria-labelledby="authTitle">
+    <div class="auth-inner">
+      <img class="auth-logo" src="/icons/icon-192.png" alt="" width="84" height="84">
+      <h1 id="authTitle" class="auth-title">Vazifalar</h1>
+      <p class="auth-sub">Eng muhim ish doim tepada.<br>Hisobotlar, AI maslahat va Telegram eslatma.</p>
+
+      <div class="segmented segmented-lg" role="tablist" data-segmented id="authTabs">
+        <button type="button" role="tab" class="seg active" data-value="login" aria-selected="true">Kirish</button>
+        <button type="button" role="tab" class="seg" data-value="register" aria-selected="false">Ro'yxatdan o'tish</button>
+        <span class="seg-thumb" aria-hidden="true"></span>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <div class="group">
+          <label class="field"><span class="field-label">Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="siz@mail.uz"></label>
+          <label class="field"><span class="field-label">Parol</span><input name="password" type="password" required autocomplete="current-password" placeholder="••••••"></label>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Kirish</button>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden">
+        <div class="group">
+          <label class="field"><span class="field-label">Ism</span><input name="full_name" type="text" required minlength="2" maxlength="100" autocomplete="name" placeholder="Ravshan"></label>
+          <label class="field"><span class="field-label">Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="siz@mail.uz"></label>
+          <label class="field"><span class="field-label">Parol</span><input name="password" type="password" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="kamida 6 belgi"></label>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Hisob yaratish</button>
+      </form>
+      <p id="authMessage" class="form-error" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- ============ Ilova ============ -->
+  <div id="app" class="app hidden">
+
+    <!-- ---------- Bugun ---------- -->
+    <section id="screen-today" class="screen" data-screen="today" aria-labelledby="todayTitle">
+      <header class="nav-bar"><span class="nav-title">Vazifalar</span></header>
+      <div class="screen-body">
+        <div class="large-title-wrap">
+          <p id="todayDate" class="eyebrow"></p>
+          <h1 id="todayTitle" class="large-title">Vazifalar</h1>
+        </div>
+
+        <div class="today-grid">
+          <aside class="today-overview" aria-label="Bugungi natija va AI reja">
+            <div class="card hero" id="todayHero">
+              <div class="hero-ring" id="todayRing"></div>
+              <div class="hero-text">
+                <p class="hero-main"><span id="heroDone" class="num">0</span> / <span id="heroTotal" class="num">0</span> bajarildi</p>
+                <p class="hero-sub" id="heroSub">Ro'yxatdagi vazifalar</p>
+                <div class="hero-chips">
+                  <span class="chip chip-flame hidden" id="streakChip"><svg class="ic"><use href="#i-flame"/></svg><span></span></span>
+                  <span class="chip chip-danger hidden" id="overdueChip"><svg class="ic"><use href="#i-alert"/></svg><span></span></span>
+                </div>
+              </div>
+            </div>
+
+            <button class="card ai-card" id="planBtn" type="button">
+              <span class="ai-icon"><svg class="ic"><use href="#i-sparkles"/></svg></span>
+              <span class="ai-text"><b>Bugun nimadan boshlay?</b><span id="planHint">AI vazifalaringizga qarab reja tuzadi</span></span>
+              <svg class="ic chev"><use href="#i-chev-right"/></svg>
+            </button>
+            <div class="card ai-answer hidden" id="planBox" aria-live="polite"></div>
+          </aside>
+
+          <main class="today-list">
+            <div class="segmented" role="tablist" data-segmented id="filterTabs" aria-label="Turi bo'yicha filtr">
+              <button type="button" role="tab" class="seg active" data-value="all" aria-selected="true">Hammasi</button>
+              <button type="button" role="tab" class="seg" data-value="kunlik" aria-selected="false">Kunlik</button>
+              <button type="button" role="tab" class="seg" data-value="haftalik" aria-selected="false">Haftalik</button>
+              <button type="button" role="tab" class="seg" data-value="oylik" aria-selected="false">Oylik</button>
+              <button type="button" role="tab" class="seg" data-value="doimiy" aria-selected="false">Doimiy</button>
+              <span class="seg-thumb" aria-hidden="true"></span>
+            </div>
+
+            <h2 class="section-title" id="pendingTitle">Bajarilmagan</h2>
+            <ul class="group list" id="pendingList"></ul>
+
+            <button class="section-title section-toggle" id="doneToggle" type="button" aria-expanded="true">
+              <span id="doneTitle">Bajarilgan</span><svg class="ic"><use href="#i-chev-down"/></svg>
+            </button>
+            <ul class="group list" id="doneList"></ul>
+
+            <div class="empty hidden" id="emptyState">
+              <div class="empty-ring" aria-hidden="true"><svg class="ic"><use href="#i-ring"/></svg></div>
+              <p class="empty-title" id="emptyTitle">Hali vazifa yo'q</p>
+              <p class="empty-sub" id="emptySub"><b>Yangi vazifa</b> tugmasi bilan birinchisini qo'shing.</p>
+            </div>
+            <p class="hint"><span class="hint-mobile">Chapga suring — o'chirish, o'ngga — bajarildi.</span><span class="hint-desktop">Tahrirlash uchun qatorni, bajarildi deb belgilash uchun doirani bosing.</span></p>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Hisobot ---------- -->
+    <section id="screen-report" class="screen hidden" data-screen="report" aria-labelledby="reportTitle">
+      <header class="nav-bar"><span class="nav-title">Hisobot</span></header>
+      <div class="screen-body">
+        <div class="large-title-wrap">
+          <p class="eyebrow">Qanchalik bajardingiz</p>
+          <h1 id="reportTitle" class="large-title">Hisobot</h1>
+        </div>
+
+        <div class="segmented" role="tablist" data-segmented id="periodTabs" aria-label="Davr">
+          <button type="button" role="tab" class="seg active" data-value="day" aria-selected="true">Kun</button>
+          <button type="button" role="tab" class="seg" data-value="week" aria-selected="false">Hafta</button>
+          <button type="button" role="tab" class="seg" data-value="month" aria-selected="false">Oy</button>
+          <span class="seg-thumb" aria-hidden="true"></span>
+        </div>
+
+        <div class="period-nav">
+          <button class="icon-btn" id="prevPeriod" type="button" aria-label="Oldingi davr"><svg class="ic"><use href="#i-chev-left"/></svg></button>
+          <div class="period-label"><b id="periodLabel">Bugun</b><span id="periodSub"></span></div>
+          <button class="icon-btn" id="nextPeriod" type="button" aria-label="Keyingi davr"><svg class="ic"><use href="#i-chev-right"/></svg></button>
+        </div>
+
+        <div id="reportBody" class="report-body"></div>
+      </div>
+    </section>
+
+    <!-- ---------- Sozlamalar ---------- -->
+    <section id="screen-settings" class="screen hidden" data-screen="settings" aria-labelledby="settingsTitle">
+      <header class="nav-bar"><span class="nav-title">Sozlamalar</span></header>
+      <div class="screen-body">
+        <div class="large-title-wrap">
+          <p class="eyebrow">Hisob va eslatmalar</p>
+          <h1 id="settingsTitle" class="large-title">Sozlamalar</h1>
+        </div>
+        <div id="settingsBody"></div>
+      </div>
+    </section>
+
+    <!-- ---------- Tab bar ---------- -->
+    <button class="fab" id="fab" type="button" aria-label="Yangi vazifa"><svg class="ic"><use href="#i-plus"/></svg><span>Yangi vazifa</span></button>
+    <nav class="tab-bar" aria-label="Bo'limlar">
+      <div class="desktop-brand" aria-hidden="true"><img src="/icons/icon-192.png" alt="" width="44" height="44"><span><b>Vazifalar</b><small>Kun tartibi</small></span></div>
+      <button class="tab active" data-tab="today" type="button" aria-current="page"><svg class="ic"><use href="#i-list"/></svg><span>Bugun</span></button>
+      <button class="tab" data-tab="report" type="button"><svg class="ic"><use href="#i-chart"/></svg><span>Hisobot</span></button>
+      <button class="tab" data-tab="settings" type="button"><svg class="ic"><use href="#i-gear"/></svg><span>Sozlamalar</span></button>
+    </nav>
+  </div>
+
+  <!-- ============ Vazifa oynasi (sheet) ============ -->
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <div class="sheet-grab" id="sheetGrab"><span></span></div>
+    <header class="sheet-head">
+      <button class="text-btn" id="sheetCancel" type="button">Bekor qilish</button>
+      <h2 id="sheetTitle">Yangi vazifa</h2>
+      <button class="text-btn strong" id="sheetSave" type="button" disabled>Qo'shish</button>
+    </header>
+    <form class="sheet-body" id="taskForm" novalidate>
+      <div class="group">
+        <input class="title-input" name="title" type="text" maxlength="200" placeholder="Nima qilish kerak?" autocomplete="off" enterkeyhint="done" aria-label="Vazifa nomi">
+        <textarea class="desc-input" name="description" rows="1" maxlength="2000" placeholder="Izoh (ixtiyoriy)" aria-label="Izoh"></textarea>
+      </div>
+
+      <p class="group-label">Turi</p>
+      <div class="segmented" role="radiogroup" data-segmented id="typeTabs" aria-label="Vazifa turi">
+        <button type="button" role="radio" class="seg active" data-value="doimiy" aria-checked="true">Doimiy</button>
+        <button type="button" role="radio" class="seg" data-value="kunlik" aria-checked="false">Kunlik</button>
+        <button type="button" role="radio" class="seg" data-value="haftalik" aria-checked="false">Haftalik</button>
+        <button type="button" role="radio" class="seg" data-value="oylik" aria-checked="false">Oylik</button>
+        <span class="seg-thumb" aria-hidden="true"></span>
+      </div>
+      <p class="group-foot" id="typeHint"></p>
+
+      <p class="group-label">Muhimlik</p>
+      <div class="group importance-card">
+        <div class="importance-head">
+          <span class="importance-num" id="impNum">5</span>
+          <span class="importance-label"><b id="impLabel">Muhim</b><span>Barmoqni yulduzlar ustida suring</span></span>
+        </div>
+        <div class="stars" id="stars" role="slider" tabindex="0" aria-label="Muhimlik" aria-valuemin="1" aria-valuemax="10" aria-valuenow="5"></div>
+      </div>
+
+      <p class="group-label">Muddat</p>
+      <div class="group">
+        <label class="row switch-row">
+          <span class="row-icon tint-red"><svg class="ic"><use href="#i-calendar"/></svg></span>
+          <span class="row-text">Deadline<small id="deadlinePreview"></small></span>
+          <input type="checkbox" class="switch" id="deadlineSwitch" role="switch">
+        </label>
+        <div class="deadline-panel" id="deadlinePanel" hidden>
+          <div class="quick-chips" id="quickChips"></div>
+          <input class="deadline-input" type="datetime-local" name="deadline" aria-label="Deadline sanasi va vaqti">
+        </div>
+      </div>
+
+      <button class="group row ai-row" id="aiSuggestBtn" type="button">
+        <span class="row-icon tint-purple"><svg class="ic"><use href="#i-sparkles"/></svg></span>
+        <span class="row-text">AI baholasin<small>Yulduz va turni vazifa matniga qarab tanlaydi</small></span>
+      </button>
+      <p class="ai-reason hidden" id="aiReason"></p>
+
+      <button class="group row danger-row hidden" id="sheetDelete" type="button">
+        <svg class="ic"><use href="#i-trash"/></svg><span>Vazifani o'chirish</span>
+      </button>
+      <p class="form-error" id="formMessage" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- ============ Toast ============ -->
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span id="toastText"></span>
+    <button class="toast-action hidden" id="toastAction" type="button"></button>
+  </div>
+
+  <script src="/charts.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
+</body>
+</html>
