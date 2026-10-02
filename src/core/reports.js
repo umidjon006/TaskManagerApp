@@ -7,7 +7,7 @@
 //   doimiy   → bitta; muddati — deadline kuni (deadline bo'lmasa, bajarilgan kuni).
 // Muddati hisobot oralig'iga tushgan holatlar hisoblanadi. Holat: done | missed | pending.
 
-const T = require('./time');
+import * as T from './time.js';
 
 const PERIODS = ['day', 'week', 'month'];
 const TREND_LENGTH = { day: 14, week: 8, month: 6 };
@@ -243,4 +243,4 @@ function buildReport({ tasks, completions, period = 'day', offset = 0, now = new
   };
 }
 
-module.exports = { buildReport, periodRange, PERIODS };
+export { buildReport, periodRange, PERIODS };

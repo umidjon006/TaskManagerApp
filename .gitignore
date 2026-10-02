@@ -1,3 +1,8 @@
 node_modules/
 .env
 *.log
+
+# Sandbox artefaktlari
+/.bashrc
+/.zshrc
+/.gitconfig

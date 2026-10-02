@@ -1,5 +1,5 @@
 // Telegram xabarlari matnlari (HTML parse_mode). Foydalanuvchi matni doim escapeHtml'dan o'tadi.
-const T = require('./time');
+import * as T from './time.js';
 
 const TYPE_LABELS = { doimiy: 'doimiy', kunlik: 'kunlik', haftalik: 'haftalik', oylik: 'oylik' };
 
@@ -115,7 +115,7 @@ function summaryMessage({ day, week, month }) {
   return lines.join('\n');
 }
 
-module.exports = {
+export {
   escapeHtml,
   formatTaskList,
   dayFocus,

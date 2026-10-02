@@ -158,7 +158,7 @@ function dayShortLabel(ds) {
   return `${WEEKDAY_SHORT[weekdayOf(ds)]}, ${Number(ds.slice(8, 10))}-${MONTHS_SHORT[Number(ds.slice(5, 7)) - 1]}`;
 }
 
-module.exports = {
+export {
   TASK_TYPES,
   MONTHS,
   MONTHS_SHORT,

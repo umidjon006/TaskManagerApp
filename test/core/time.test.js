@@ -1,6 +1,6 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const T = require('../src/time');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import * as T from '../../src/core/time.js';
 
 const TZ = 'Asia/Tashkent'; // UTC+5
 

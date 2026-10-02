@@ -1,7 +1,9 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const { buildReport, periodRange } = require('../src/reports');
-const { at } = require('./helpers');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildReport, periodRange } from '../../src/core/reports.js';
+
+// Toshkent vaqti (UTC+5) bo'yicha sana: at('2026-09-29T10:00:00') → o'sha lahzaning Date'i.
+const at = (localIso) => new Date(new Date(`${localIso}Z`).getTime() - 5 * 3600 * 1000);
 
 const TZ = 'Asia/Tashkent';
 // "Hozir": 2026-10-01 (payshanba) 15:00 Toshkent. Hafta: 28-sen (Du) – 4-okt (Ya).
