@@ -15,7 +15,7 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-180.png">
-  <link rel="stylesheet" href="/style.css?v=4">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <!-- ============ Ikonkalar (bitta chiziqli oila, 24×24) ============ -->
@@ -47,39 +47,6 @@
     <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 8.4 7.2"/></symbol>
   </svg>
 
-  <!-- ============ Kirish ============ -->
-  <section id="authScreen" class="auth hidden" aria-labelledby="authTitle">
-    <div class="auth-inner">
-      <img class="auth-logo" src="/icons/icon-192.png" alt="" width="84" height="84">
-      <h1 id="authTitle" class="auth-title">Vazifalar</h1>
-      <p class="auth-sub">Eng muhim ish doim tepada.<br>Hisobotlar, AI maslahat va Telegram eslatma.</p>
-
-      <div class="segmented segmented-lg" role="tablist" data-segmented id="authTabs">
-        <button type="button" role="tab" class="seg active" data-value="login" aria-selected="true">Kirish</button>
-        <button type="button" role="tab" class="seg" data-value="register" aria-selected="false">Ro'yxatdan o'tish</button>
-        <span class="seg-thumb" aria-hidden="true"></span>
-      </div>
-
-      <form id="loginForm" class="auth-form">
-        <div class="group">
-          <label class="field"><span class="field-label">Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="siz@mail.uz"></label>
-          <label class="field"><span class="field-label">Parol</span><input name="password" type="password" required autocomplete="current-password" placeholder="••••••"></label>
-        </div>
-        <button class="btn btn-primary btn-block" type="submit">Kirish</button>
-      </form>
-
-      <form id="registerForm" class="auth-form hidden">
-        <div class="group">
-          <label class="field"><span class="field-label">Ism</span><input name="full_name" type="text" required minlength="2" maxlength="100" autocomplete="name" placeholder="Ravshan"></label>
-          <label class="field"><span class="field-label">Email</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="siz@mail.uz"></label>
-          <label class="field"><span class="field-label">Parol</span><input name="password" type="password" required minlength="6" maxlength="72" autocomplete="new-password" placeholder="kamida 6 belgi"></label>
-        </div>
-        <button class="btn btn-primary btn-block" type="submit">Hisob yaratish</button>
-      </form>
-      <p id="authMessage" class="form-error" role="alert"></p>
-    </div>
-  </section>
-
   <!-- ============ Ilova ============ -->
   <div id="app" class="app hidden">
 
@@ -106,12 +73,6 @@
               </div>
             </div>
 
-            <button class="card ai-card" id="planBtn" type="button">
-              <span class="ai-icon"><svg class="ic"><use href="#i-sparkles"/></svg></span>
-              <span class="ai-text"><b>Bugun nimadan boshlay?</b><span id="planHint">AI vazifalaringizga qarab reja tuzadi</span></span>
-              <svg class="ic chev"><use href="#i-chev-right"/></svg>
-            </button>
-            <div class="card ai-answer hidden" id="planBox" aria-live="polite"></div>
           </aside>
 
           <main class="today-list">
@@ -238,11 +199,6 @@
         </div>
       </div>
 
-      <button class="group row ai-row" id="aiSuggestBtn" type="button">
-        <span class="row-icon tint-purple"><svg class="ic"><use href="#i-sparkles"/></svg></span>
-        <span class="row-text">AI baholasin<small>Yulduz va turni vazifa matniga qarab tanlaydi</small></span>
-      </button>
-      <p class="ai-reason hidden" id="aiReason"></p>
 
       <button class="group row danger-row hidden" id="sheetDelete" type="button">
         <svg class="ic"><use href="#i-trash"/></svg><span>Vazifani o'chirish</span>
@@ -257,7 +213,6 @@
     <button class="toast-action hidden" id="toastAction" type="button"></button>
   </div>
 
-  <script src="/charts.js?v=3"></script>
-  <script src="/app.js?v=4"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

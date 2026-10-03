@@ -100,8 +100,8 @@ export async function getSettings(db) {
 
 export async function setSetting(db, key, value) {
   if (value === null || value === undefined) throw new TypeError(`Sozlama qiymati bo'sh: ${key}`);
-  await db.run(
-    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
-    [key, String(value)],
-  );
+  // Upsert ON CONFLICT'siz (u SQLite 3.24+ talab qiladi): qator bo'lsa UPDATE yangilaydi va
+  // INSERT jim o'tadi; bo'lmasa UPDATE 0 qatorga tegadi va INSERT qo'shadi.
+  await db.run('UPDATE settings SET value = ? WHERE key = ?', [String(value), key]);
+  await db.run('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
 }
