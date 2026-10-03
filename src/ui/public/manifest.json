@@ -1,7 +1,7 @@
 {
   "name": "Vazifalar",
   "short_name": "Vazifalar",
-  "description": "Muhimlik bo'yicha saralanadigan vazifalar, hisobotlar, AI va Telegram eslatmalar",
+  "description": "Muhimlik bo'yicha saralanadigan vazifalar, hisobotlar va Telegram eslatmalar",
   "lang": "uz",
   "start_url": "/",
   "display": "standalone",

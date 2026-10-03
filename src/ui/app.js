@@ -1,8 +1,10 @@
 // Vazifalar — iOS uslubidagi mijoz qismi (framework'siz).
-// API manzili nisbiy: Nginx /api/... ni backend konteyneriga uzatadi, IP kodga yozilmaydi.
+// Ma'lumotlar features/store.js orqali — qurilma ichidagi SQLite, server yo'q.
 import * as Charts from './charts.js';
+import { openDatabase } from '../platform/index.js';
+import { createStore } from '../features/store.js';
+import schemaSql from '../data/schema.sql?raw';
 
-const API = '/api';
 const DONE_COLLAPSED_KEY = 'vazifalar_done_collapsed';
 
 const TYPE_LABELS = { doimiy: 'Doimiy', kunlik: 'Kunlik', haftalik: 'Haftalik', oylik: 'Oylik' };
@@ -29,7 +31,6 @@ const state = {
   type: 'doimiy',
   streak: 0,
   report: { period: 'day', offset: 0, data: null },
-  tgPoll: null,
   scroll: {},
 };
 
@@ -94,20 +95,10 @@ function importanceLabel(n) {
   return 'Past';
 }
 
-// ---------- API ----------
+// ---------- Ma'lumot ----------
 
-async function api(path, { method = 'GET', body } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  let res;
-  try {
-    res = await fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  } catch {
-    throw new Error("Server bilan aloqa yo'q. Internetni tekshiring.");
-  }
-  const data = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) throw new Error((data && data.error) || `Xatolik: ${res.status}`);
-  return data;
-}
+// boot() da db ochilib, store.init() tugagandan keyin o'rnatiladi.
+let store = null;
 
 async function withLoading(button, fn) {
   button.classList.add('loading');
@@ -241,12 +232,12 @@ function updateNavBars() {
 // ---------- Profil ----------
 
 async function refreshMe() {
-  state.me = await api('/me');
+  state.me = await store.getMe();
 }
 
 async function loadStreak() {
   try {
-    const report = await api('/reports?period=day');
+    const report = await store.getReport('day', 0);
     state.streak = report.streak || 0;
     renderHero();
   } catch { /* streak — qo'shimcha ma'lumot, xato bo'lsa ko'rsatmaymiz */ }
@@ -264,7 +255,7 @@ function compareTasks(a, b) {
 }
 
 async function loadTasks() {
-  const data = await api('/tasks');
+  const data = await store.listTasks();
   state.tasks = data.tasks;
   renderTasks();
 }
@@ -396,7 +387,7 @@ function renderTasks() {
 async function toggleTask(task, li) {
   haptic(12);
   const wasDone = task.done;
-  const request = api(`/tasks/${task.id}/toggle`, { method: 'POST' });
+  const request = store.toggleTask(task.id);
   task.done = !wasDone;
   if (li) {
     li.classList.toggle('done', task.done);
@@ -421,10 +412,10 @@ async function deleteTask(task) {
   state.tasks = state.tasks.filter((t) => t.id !== task.id);
   renderTasks();
   try {
-    await api(`/tasks/${task.id}`, { method: 'DELETE' });
+    await store.deleteTask(task.id);
     toast('Vazifa o\'chirildi', 'Qaytarish', async () => {
       try {
-        const { task: restored } = await api(`/tasks/${task.id}/restore`, { method: 'POST' });
+        const { task: restored } = await store.restoreTask(task.id);
         state.tasks.push(restored);
         renderTasks();
       } catch (err) {
@@ -683,11 +674,11 @@ async function saveTask() {
   await withLoading(btn, async () => {
     try {
       if (state.editing) {
-        const { task } = await api(`/tasks/${state.editing.id}`, { method: 'PUT', body: payload });
+        const { task } = await store.updateTask(state.editing.id, payload);
         Object.assign(state.editing, task);
         toast('Saqlandi');
       } else {
-        const { task } = await api('/tasks', { method: 'POST', body: payload });
+        const { task } = await store.createTask(payload);
         state.tasks.push(task);
         toast("Vazifa qo'shildi");
       }
@@ -711,7 +702,7 @@ async function loadReport() {
   $('nextPeriod').disabled = offset >= 0;
   body.classList.add('refreshing');
   try {
-    const data = await api(`/reports?period=${period}&offset=${offset}`);
+    const data = await store.getReport(period, offset);
     if (data.period !== state.report.period || data.offset !== state.report.offset) return; // eskirgan javob
     state.report.data = data;
     renderReport(data);
@@ -816,11 +807,6 @@ function renderReport(r) {
 
 // ---------- Sozlamalar ----------
 
-function stopTelegramPolling() {
-  if (state.tgPoll) clearInterval(state.tgPoll);
-  state.tgPoll = null;
-}
-
 function settingsRow({ iconName, tint, text, sub, value, onclick, cls = '' }) {
   const tag = onclick ? 'button' : 'div';
   return el(tag, { class: `row ${cls}`, type: onclick ? 'button' : undefined, onclick }, [
@@ -832,26 +818,14 @@ function settingsRow({ iconName, tint, text, sub, value, onclick, cls = '' }) {
 
 function renderSettings() {
   if (!state.me) return;
-  const { user, telegram, settings, quiet_hours: quiet, summary_hour: summaryHour, timezone } = state.me;
-  const initials = user.full_name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  const { settings, quiet_hours: quiet, summary_hour: summaryHour, timezone } = state.me;
   const body = $('settingsBody');
 
-  const profile = el('div', { class: 'group profile' }, [
-    el('div', { class: 'avatar', text: initials, 'aria-hidden': 'true' }),
-    el('div', {}, [el('div', { class: 'profile-name', text: user.full_name }), el('div', { class: 'profile-mail', text: user.email })]),
-  ]);
-
-  const tgStatus = !telegram.enabled
-    ? el('span', { class: 'row-value status-off', text: "O'chiq" })
-    : telegram.connected ? el('span', { class: 'row-value status-on', text: 'Ulangan' }) : el('span', { class: 'row-value status-off', text: 'Ulanmagan' });
+  // Telegram ulanishi 7-bosqichda — hozircha doim "Ulanmagan", ulash tugmasi o'chiq.
   const tgGroup = el('div', { class: 'group', id: 'tgGroup' }, [
-    settingsRow({ iconName: 'i-send', tint: 'tint-blue', text: 'Telegram bot', sub: telegram.bot_username ? `@${telegram.bot_username}` : undefined, value: tgStatus }),
+    settingsRow({ iconName: 'i-send', tint: 'tint-blue', text: 'Telegram bot', value: el('span', { class: 'row-value status-off', text: 'Ulanmagan' }) }),
+    el('button', { class: 'row', type: 'button', id: 'tgLinkBtn', disabled: true, style: 'color:var(--tint);justify-content:center;font-weight:600' }, [el('span', { text: 'Telegramni ulash' })]),
   ]);
-  if (telegram.enabled && telegram.connected) {
-    tgGroup.append(el('button', { class: 'row danger-row', style: 'margin:0', type: 'button', onclick: unlinkTelegram }, [el('span', { text: 'Telegramni uzish' })]));
-  } else if (telegram.enabled) {
-    tgGroup.append(el('button', { class: 'row', type: 'button', id: 'tgLinkBtn', onclick: linkTelegram, style: 'color:var(--tint);justify-content:center;font-weight:600' }, [el('span', { text: 'Telegramni ulash' })]));
-  }
 
   const select = el('select', { 'aria-label': 'Soatlik xabarga qaysi vazifalar qo\'shilsin' });
   for (let i = 10; i >= 1; i -= 1) select.append(el('option', { value: String(i), text: i === 10 ? '★10' : `★${i}+` }));
@@ -865,69 +839,18 @@ function renderSettings() {
   ]);
 
   body.replaceChildren(
-    profile,
     el('p', { class: 'group-label', text: 'Telegram' }), tgGroup,
-    el('p', { class: 'group-foot', text: telegram.enabled
-      ? 'Bot har soatda bugungi holatni yuboradi: nima bajarildi, nima qoldi. Vazifani to\'g\'ridan-to\'g\'ri Telegramdan "bajarildi" qilish mumkin.'
-      : "Administrator serverdagi .env faylida TELEGRAM_BOT_TOKEN ko'rsatishi kerak." }),
+    el('p', { class: 'group-foot', text: "Telegram eslatmalari keyingi yangilanishda qo'shiladi." }),
     el('p', { class: 'group-label', text: 'Eslatmalar' }), remindGroup,
     el('p', { class: 'group-foot', text: `Soatlik xabarda doim bo'ladi: kunlik vazifalar va deadline'i bugun bo'lganlar. Qolganlari — tanlangan yulduzdan yuqorilari. Vaqt zonasi: ${timezone}.` }),
-    el('p', { class: 'footer-note', text: 'Vazifalar · Nginx → Node.js → PostgreSQL · Docker' }),
+    el('p', { class: 'footer-note', text: "Vazifalar · Ma'lumotlar faqat shu qurilmada saqlanadi" }),
   );
-}
-
-async function linkTelegram() {
-  const btn = $('tgLinkBtn');
-  await withLoading(btn, async () => {
-    try {
-      const { url, code } = await api('/telegram/link', { method: 'POST' });
-      const flow = el('div', { class: 'tg-flow' }, [
-        el('a', { class: 'btn btn-primary btn-block', href: url, target: '_blank', rel: 'noopener' }, [icon('i-send'), "Telegram'da ochish"]),
-        el('p', {}, ['Botda ', el('b', { text: 'START' }), ' tugmasini bosing. Ochilmasa, botga yuboring: ', el('span', { class: 'code', text: `/start ${code}` })]),
-        el('div', { class: 'waiting', text: 'Ulanish kutilmoqda… (havola 15 daqiqa amal qiladi)' }),
-      ]);
-      btn.replaceWith(flow);
-      startTelegramPolling();
-    } catch (err) {
-      toast(err.message);
-    }
-  });
-}
-
-function startTelegramPolling() {
-  stopTelegramPolling();
-  const started = Date.now();
-  state.tgPoll = setInterval(async () => {
-    if (state.tab !== 'settings' || Date.now() - started > 15 * 60 * 1000) { stopTelegramPolling(); return; }
-    try {
-      await refreshMe();
-      if (state.me.telegram.connected) {
-        stopTelegramPolling();
-        haptic(20);
-        renderSettings();
-        toast('Telegram ulandi 🎉');
-      }
-    } catch { /* keyingi urinishda */ }
-  }, 3000);
-}
-
-async function unlinkTelegram() {
-  if (!confirm("Telegram eslatmalari o'chirilsinmi?")) return;
-  try {
-    await api('/telegram/link', { method: 'DELETE' });
-    await refreshMe();
-    renderSettings();
-    toast('Telegram uzildi');
-  } catch (err) {
-    toast(err.message);
-  }
 }
 
 async function saveMinImportance(e) {
   const value = Number(e.target.value);
   try {
-    await api('/settings', { method: 'PUT', body: { reminder_min_importance: value } });
-    state.me.settings.reminder_min_importance = value;
+    state.me = await store.updateSettings({ reminder_min_importance: value });
     toast('Saqlandi');
   } catch (err) {
     toast(err.message);
@@ -997,7 +920,17 @@ function bind() {
 }
 
 bind();
-(async function init() {
+// wasm yuklanguncha #app yashirin turadi (index.html dagi boshlang'ich holat).
+(async function boot() {
+  try {
+    const db = await openDatabase();
+    store = createStore(db, { migrations: [schemaSql] });
+    await store.init();
+  } catch (err) {
+    console.error(err);
+    toast("Ma'lumotlar bazasini ochib bo'lmadi. Sahifani yangilab ko'ring.");
+    return;
+  }
   try {
     await showApp();
   } catch (err) {
