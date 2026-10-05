@@ -9,9 +9,15 @@
     "test": "node --test test/core/*.test.js test/data/*.test.js test/features/*.test.js test/platform/*.test.js"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "typescript": "^7.0.2",
     "vite": "^8.3.2"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
     "sql.js": "^1.14.2"
   }
 }

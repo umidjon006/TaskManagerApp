@@ -8,3 +8,10 @@ dist/
 /.bashrc
 /.zshrc
 /.gitconfig
+
+# Android build artefaktlari
+android/app/build
+android/build
+android/.gradle
+android/local.properties
+android/app/src/main/assets/public
