@@ -33,6 +33,11 @@ Capacitor 8 + Vite. iOS build faqat MacBook'da.
 Platforma API'sini (Capacitor plugin, better-sqlite3, localStorage)
 `platform/` dan tashqarida to'g'ridan-to'g'ri chaqirish taqiqlanadi.
 
+ISTISNO: `src/ui/` dagi readStore/writeStore localStorage ni to'g'ridan-to'g'ri
+ishlatadi. Bu faqat vaqtinchalik UI holati uchun (ro'yxat yig'ilganmi va h.k.),
+yo'qolsa hech narsa buzilmaydi. Haqiqiy ma'lumot va sozlamalar HAR DOIM
+store.js orqali SQLite'ga yoziladi — localStorage'ga emas.
+
 ## UI — tegilmaydi
 
 `src/ui/style.css` Apple HIG bo'yicha qilingan: semantik ranglar,

@@ -456,6 +456,11 @@ button.row:active, .row.clickable:active { background: var(--cell-press); transf
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast-action { color: #64d2ff; font-weight: 600; min-height: 32px; padding: 0 8px; }
 
+/* display:flex hidden atributini bekor qiladi — yopiq sheet/toast ko'rinmas bo'lsa ham bosishni ushlamasin. */
+.sheet[hidden], .sheet-backdrop[hidden], .toast[hidden] {
+  pointer-events: none;
+}
+
 /* ---------- Hisobot ---------- */
 .period-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin: 10px 0 6px; }
 .period-label { text-align: center; display: flex; flex-direction: column; }

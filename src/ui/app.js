@@ -120,7 +120,14 @@ function toast(text, actionLabel, action) {
   const btn = $('toastAction');
   btn.classList.toggle('hidden', !actionLabel);
   btn.textContent = actionLabel || '';
-  btn.onclick = actionLabel ? async () => { hideToast(); await action(); } : null;
+  // Amal faqat bir marta: ikkinchi bosish (yoki yopilish animatsiyasi paytidagi bosish) e'tiborsiz.
+  let used = false;
+  btn.onclick = actionLabel ? async () => {
+    if (used) return;
+    used = true;
+    hideToast();
+    await action();
+  } : null;
   box.hidden = false;
   requestAnimationFrame(() => box.classList.add('show'));
   clearTimeout(toastTimer);
@@ -128,8 +135,15 @@ function toast(text, actionLabel, action) {
 }
 function hideToast() {
   const box = $('toast');
+  const btn = $('toastAction');
+  // Yopilgan toast'ning amali endi ishlamaydi. Tugma animatsiya tugaguncha ko'rinib turadi.
+  btn.onclick = null;
   box.classList.remove('show');
-  setTimeout(() => { if (!box.classList.contains('show')) box.hidden = true; }, 400);
+  setTimeout(() => {
+    if (box.classList.contains('show')) return;
+    box.hidden = true;
+    btn.classList.add('hidden');
+  }, 400);
 }
 
 // ---------- Sana ----------
@@ -416,7 +430,10 @@ async function deleteTask(task) {
     toast('Vazifa o\'chirildi', 'Qaytarish', async () => {
       try {
         const { task: restored } = await store.restoreTask(task.id);
-        state.tasks.push(restored);
+        // Takroriy chaqiruv dublikat yaratmasin: id bor bo'lsa — almashtiramiz.
+        const i = state.tasks.findIndex((t) => t.id === restored.id);
+        if (i === -1) state.tasks.push(restored);
+        else state.tasks[i] = restored;
         renderTasks();
       } catch (err) {
         toast(err.message);
