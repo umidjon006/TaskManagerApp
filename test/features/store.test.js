@@ -212,3 +212,17 @@ test("updateSettings: noto'g'ri qiymat — xato va hech narsa yozilmaydi", async
   await assert.rejects(store.updateSettings(null), /Sozlamalar noto'g'ri/);
   assert.deepEqual(await store.getMe(), before);
 });
+
+test('updateSettings: lead_minutes va morning_hour tekshiriladi', async () => {
+  const { store, db } = await freshStore();
+  await store.updateSettings({ lead_minutes: '10, 60,0', morning_hour: 8 });
+  const read = async (key) => (await db.get('SELECT value FROM settings WHERE key = ?', [key])).value;
+  assert.equal(await read('lead_minutes'), '60,10,0');
+  assert.equal(await read('morning_hour'), '8');
+  await store.updateSettings({ lead_minutes: '', morning_hour: '' });
+  assert.equal(await read('lead_minutes'), '');
+  assert.equal(await read('morning_hour'), '');
+  await assert.rejects(store.updateSettings({ lead_minutes: '60,-5' }), /Eslatma daqiqalari/);
+  await assert.rejects(store.updateSettings({ lead_minutes: '1.5' }), /Eslatma daqiqalari/);
+  await assert.rejects(store.updateSettings({ morning_hour: 24 }), /0 dan 23 gacha/);
+});

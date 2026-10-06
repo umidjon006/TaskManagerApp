@@ -5,9 +5,9 @@ vazifalar, deadline, hisobotlar. Server YO'Q — hamma narsa qurilma ichida.
 
 ## Qattiq cheklovlar
 
-- Hech qanday backend, API server yoki bulut. Internet faqat Telegram uchun.
+- Hech qanday backend, API server yoki bulut. Ilovaga internet umuman kerak emas.
 - Ma'lumot faqat qurilma xotirasidagi SQLite faylida.
-- Ilova internetsiz to'liq ishlashi shart (Telegramdan tashqari).
+- Ilova internetsiz to'liq ishlashi shart.
 - Auth yo'q: parol, JWT, bcrypt, foydalanuvchilar jadvali kerak emas.
 - AI yo'q: Anthropic SDK va /api/ai/\* olib tashlandi.
 
@@ -27,7 +27,7 @@ Capacitor 8 + Vite. iOS build faqat MacBook'da.
 - `src/data/` — SQLite sxemasi va so'rovlari.
 - `src/platform/` — platforma farqlari SHU YERDA qamaladi.
   capacitor.js | electron.js | web.js — bir xil interfeys.
-- `src/features/` — notifications, telegram, backup.
+- `src/features/` — notifications, backup.
 - `src/ui/` — mavjud interfeys. Dizaynga TEGILMAYDI (pastga qarang).
 
 Platforma API'sini (Capacitor plugin, better-sqlite3, localStorage)
@@ -56,11 +56,9 @@ Shuning uchun eslatma OLDINDAN jadvallanadi (`LocalNotifications.schedule`).
 Vazifa qo'shilganda/o'zgarganda kelajakdagi eslatmalar qayta hisoblanadi.
 iOS bir vaqtda 64 ta kutayotgan eslatmani saqlaydi — limitni hisobga oling.
 
-## Telegram
-
-Internetsiz yuborib bo'lmaydi. Xabar `outbox` jadvaliga yoziladi,
-internet paydo bo'lganda yuboriladi (Network plugin + background runner).
-Bot tokeni qurilmada Preferences'da saqlanadi, repo'ga tushmaydi.
+Eslatmalar `src/core/schedule.js` (`buildSchedule`) da hisoblanadi — sof
+funksiya, `now` argument sifatida keladi. Platforma faqat natijani
+jadvallaydi, o'zi hech narsa hisoblamaydi. Natija ko'pi bilan 60 ta.
 
 ## Til
 

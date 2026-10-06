@@ -8,6 +8,7 @@ import * as repo from '../data/repo.js';
 import { validateTaskInput, publicTask } from '../core/validate.js';
 import { buildReport, PERIODS } from '../core/reports.js';
 import { assertTimeZone, parseQuietHours, parseSummaryHour } from '../core/time.js';
+import { parseLeadMinutes, parseMorningHour } from '../core/schedule.js';
 
 // Saqlash formati server-version'dagi .env bilan bir xil: QUIET_HOURS=23-7, DAILY_SUMMARY_HOUR=21.
 // Bo'sh satr — o'chiq (jim soatlar yo'q / kun yakuni yuborilmaydi).
@@ -16,6 +17,8 @@ export const DEFAULT_SETTINGS = {
   reminder_min_importance: '5',
   quiet_hours: '22-7',
   summary_hour: '21',
+  lead_minutes: '60,10,0',
+  morning_hour: '9',
 };
 
 const MAX_REPORT_OFFSET = 120;
@@ -54,6 +57,23 @@ const SETTING_PARSERS = {
       parseSummaryHour(raw);
     } catch {
       fail("Kun yakuni soati 0 dan 23 gacha bo'lsin");
+    }
+    return raw;
+  },
+  // "60,10,0" — deadline'dan necha daqiqa oldin eslatish. Bo'sh — deadline eslatmalari o'chiq.
+  lead_minutes(value) {
+    try {
+      return parseLeadMinutes(value === null ? '' : value).join(',');
+    } catch {
+      return fail("Eslatma daqiqalari noto'g'ri. Namuna: 60,10,0");
+    }
+  },
+  morning_hour(value) {
+    const raw = value === null ? '' : String(value).trim();
+    try {
+      parseMorningHour(raw);
+    } catch {
+      fail("Ertalabki eslatma soati 0 dan 23 gacha bo'lsin");
     }
     return raw;
   },
