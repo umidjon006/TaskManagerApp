@@ -89,3 +89,17 @@ export async function openChannelSettings() {
   await NotificationSettings.openChannel({ channelId: CHANNEL_ID });
   return true;
 }
+
+// Ilovaning bildirishnoma sozlamalari (ruxsat butunlay rad etilganda — faqat shu yerdan yoqiladi).
+export async function openNotificationSettings() {
+  if (!isAndroid()) return false;
+  await NotificationSettings.openChannel({});
+  return true;
+}
+
+// "Signal va eslatmalar" (aniq budilnik) sozlamalari. Android 12 dan pastda — hech narsa ochmaydi.
+export async function openExactAlarmSettings() {
+  if (!isAndroid()) return false;
+  await LocalNotifications.changeExactNotificationSetting();
+  return true;
+}

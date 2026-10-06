@@ -26,3 +26,11 @@ export async function pending() {
 export async function openChannelSettings() {
   return false;
 }
+
+export async function openNotificationSettings() {
+  return false;
+}
+
+export async function openExactAlarmSettings() {
+  return false;
+}

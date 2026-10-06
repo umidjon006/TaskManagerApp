@@ -33,6 +33,8 @@ function fakeNotifier({ supported = true, notifications = 'granted', exactAlarm 
     async schedule(items) { calls.push('schedule'); scheduled = items; },
     async pending() { return scheduled; },
     async openChannelSettings() { return true; },
+    async openNotificationSettings() { return true; },
+    async openExactAlarmSettings() { return true; },
   };
 }
 

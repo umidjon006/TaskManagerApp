@@ -36,7 +36,8 @@ const state = {
   streak: 0,
   report: { period: 'day', offset: 0, data: null },
   scroll: {},
-  notifications: null, // oxirgi syncNotifications natijasi: { scheduled, exactAlarm } yoki { skipped }
+  notifications: null, // oxirgi syncNotifications natijasi: { scheduled, exactAlarm } yoki { skipped, permission? }
+  notifySupported: false, // tabiiy ilova — eslatma qatorlari ko'rinadi
 };
 
 const $ = (id) => document.getElementById(id);
@@ -128,7 +129,10 @@ function withNotificationSync(s) {
 function resyncNotifications() {
   if (!store || !notifier) return;
   syncNotifications(store, notifier)
-    .then((result) => { state.notifications = result; })
+    .then((result) => {
+      state.notifications = result;
+      renderPermissionWarnings();
+    })
     .catch((err) => console.warn('Eslatmalarni jadvallab bo\'lmadi:', err));
 }
 
@@ -874,45 +878,161 @@ function settingsRow({ iconName, tint, text, sub, value, onclick, cls = '' }) {
   ]);
 }
 
+const LEAD_OPTIONS = [[1440, '1 kun'], [180, '3 soat'], [60, '1 soat'], [30, '30 daq'], [10, '10 daq'], [0, 'Vaqtida']];
+
+function hourSelect(label, current, onChange) {
+  const select = el('select', { 'aria-label': label });
+  select.append(el('option', { value: '', text: "O'chiq" }));
+  for (let h = 0; h < 24; h += 1) select.append(el('option', { value: String(h), text: `${pad(h)}:00` }));
+  // getMe: '09:00' yoki null (o'chiq).
+  select.value = current ? String(Number(current.slice(0, 2))) : '';
+  select.addEventListener('change', () => onChange(select.value));
+  return select;
+}
+
+// Ruxsat ogohlantirishlari — eslatmalar guruhining tepasida. Brauzerda (isSupported=false) hech qachon yo'q.
+// state.notifications — oxirgi syncNotifications natijasi; u kelganda shu funksiya qayta chaqiriladi.
+function permissionWarnings() {
+  const n = state.notifications;
+  if (!state.notifySupported || !n) return [];
+  if (n.permission && n.permission !== 'granted') {
+    // 'prompt' — Android hali dialog ko'rsata oladi; 'denied' — faqat ilova sozlamalaridan.
+    const canAsk = n.permission === 'prompt';
+    return [settingsRow({
+      iconName: 'i-alert', tint: 'tint-red', cls: 'warn-row',
+      text: 'Eslatmalar kelmaydi',
+      sub: canAsk ? 'Bildirishnomaga ruxsat berilmagan' : "Telefon sozlamalari → Ilovalar → Vazifalar → Bildirishnomalar",
+      value: el('span', { class: 'row-value', text: canAsk ? 'Ruxsat berish' : 'Ochish' }),
+      onclick: canAsk ? requestNotificationPermission : () => openSystemSettings(() => notifier.openNotificationSettings()),
+    })];
+  }
+  if (n.exactAlarm === 'denied') {
+    return [settingsRow({
+      iconName: 'i-hourglass', tint: 'tint-orange', cls: 'warn-row',
+      text: 'Eslatmalar kechikishi mumkin',
+      sub: "Bir necha daqiqaga. «Signal va eslatmalar» ruxsatini yoqing",
+      value: el('span', { class: 'row-value', text: 'Ochish' }),
+      onclick: () => openSystemSettings(() => notifier.openExactAlarmSettings()),
+    })];
+  }
+  return [];
+}
+
+function renderPermissionWarnings() {
+  const group = $('remindGroup');
+  if (!group) return;
+  group.querySelectorAll('.warn-row').forEach((r) => r.remove());
+  group.prepend(...permissionWarnings());
+}
+
+async function requestNotificationPermission() {
+  try {
+    await notifier.requestPermissions();
+  } catch (err) {
+    console.warn(err);
+  }
+  resyncNotifications(); // natija kelgach ogohlantirish yangilanadi
+}
+
+// Tizim oynasidan qaytilganda appStateChange → qayta jadvallash → ogohlantirishlar yangilanadi.
+async function openSystemSettings(open) {
+  haptic(5);
+  try {
+    if (!(await open())) toast("Bu qurilmada sozlamalarni ochib bo'lmaydi");
+  } catch (err) {
+    console.warn(err);
+    toast("Sozlamalarni ochib bo'lmadi");
+  }
+}
+
+// Sozlamalar ketma-ket saqlanadi: store.updateSettings tranzaksiya ochadi, ikkitasi ustma-ust tushmasin.
+let settingsQueue = Promise.resolve();
+function saveSetting(patch, { quiet = false } = {}) {
+  const job = settingsQueue.then(() => store.updateSettings(patch));
+  settingsQueue = job.catch(() => {});
+  return job.then((me) => {
+    state.me = me;
+    if (!quiet) toast('Saqlandi');
+    return me;
+  }, (err) => {
+    toast(err.message);
+    renderSettings(); // ekranni saqlangan holatga qaytaramiz
+    throw err;
+  });
+}
+
+function leadChips(selected) {
+  const hint = el('p', { class: 'group-foot', text: "Deadline eslatmalari o'chiq — hech biri tanlanmagan." });
+  const chips = LEAD_OPTIONS.map(([minutes, label]) => el('button', {
+    class: `chip-btn${selected.includes(minutes) ? ' active' : ''}`,
+    type: 'button',
+    text: label,
+    'aria-pressed': String(selected.includes(minutes)),
+    'data-minutes': String(minutes),
+  }));
+  const sync = () => { hint.hidden = chips.some((c) => c.classList.contains('active')); };
+  for (const chip of chips) {
+    chip.addEventListener('click', () => {
+      haptic(5);
+      const on = !chip.classList.contains('active');
+      chip.classList.toggle('active', on);
+      chip.setAttribute('aria-pressed', String(on));
+      sync();
+      const value = chips.filter((c) => c.classList.contains('active')).map((c) => c.dataset.minutes).join(',');
+      saveSetting({ lead_minutes: value }, { quiet: true }).catch(() => {});
+    });
+  }
+  sync();
+  return { panel: el('div', { class: 'chips-panel' }, [el('div', { class: 'chip-wrap', role: 'group', 'aria-label': "Deadline'dan qancha oldin eslatilsin" }, chips)]), hint };
+}
+
 function renderSettings() {
   if (!state.me) return;
-  const { settings, quiet_hours: quiet, summary_hour: summaryHour, timezone } = state.me;
+  const { settings, quiet_hours: quiet, summary_hour: summaryHour, morning_hour: morningHour, timezone } = state.me;
   const body = $('settingsBody');
 
-  // Telegram ulanishi 7-bosqichda — hozircha doim "Ulanmagan", ulash tugmasi o'chiq.
-  const tgGroup = el('div', { class: 'group', id: 'tgGroup' }, [
-    settingsRow({ iconName: 'i-send', tint: 'tint-blue', text: 'Telegram bot', value: el('span', { class: 'row-value status-off', text: 'Ulanmagan' }) }),
-    el('button', { class: 'row', type: 'button', id: 'tgLinkBtn', disabled: true, style: 'color:var(--tint);justify-content:center;font-weight:600' }, [el('span', { text: 'Telegramni ulash' })]),
-  ]);
-
-  const select = el('select', { 'aria-label': 'Soatlik xabarga qaysi vazifalar qo\'shilsin' });
+  const select = el('select', { 'aria-label': 'Qaysi vazifalar eslatilsin' });
   for (let i = 10; i >= 1; i -= 1) select.append(el('option', { value: String(i), text: i === 10 ? '★10' : `★${i}+` }));
   select.value = String(settings.reminder_min_importance);
   select.addEventListener('change', saveMinImportance);
 
-  const remindGroup = el('div', { class: 'group' }, [
-    settingsRow({ iconName: 'i-bell', tint: 'tint-red', text: 'Soatlik xabarga', sub: "muhimlari (kunlikdan tashqari)", value: select }),
+  const remindGroup = el('div', { class: 'group', id: 'remindGroup' }, [
+    settingsRow({ iconName: 'i-bell', tint: 'tint-red', text: 'Eslatiladi', sub: 'shu muhimlikdan boshlab', value: select }),
+    settingsRow({ iconName: 'i-calendar', tint: 'tint-blue', text: 'Ertalabki reja', value: hourSelect('Ertalabki reja soati', morningHour, (v) => saveSetting({ morning_hour: v }).catch(() => {})) }),
+    settingsRow({ iconName: 'i-clock', tint: 'tint-orange', text: 'Kun yakuni', value: hourSelect('Kun yakuni soati', summaryHour, (v) => saveSetting({ summary_hour: v }).catch(() => {})) }),
     settingsRow({ iconName: 'i-moon', tint: 'tint-purple', text: 'Jim soatlar', value: quiet || "Yo'q" }),
-    settingsRow({ iconName: 'i-clock', tint: 'tint-orange', text: 'Kun yakuni', value: summaryHour || "O'chiq" }),
   ]);
 
+  const lead = leadChips(settings.lead_minutes);
+  const leadGroup = el('div', { class: 'group' }, [
+    settingsRow({ iconName: 'i-hourglass', tint: 'tint-red', text: "Deadline'dan oldin" }),
+    lead.panel,
+  ]);
+
+  // Ovoz — faqat tabiiy ilovada: Android 8+ da ovoz kanal xossasi, uni tizim sozlamalarida tanlanadi.
+  const soundParts = state.notifySupported ? [
+    el('div', { class: 'group' }, [
+      settingsRow({
+        iconName: 'i-ring', tint: 'tint-green', text: 'Eslatma ovozi',
+        value: el('span', { class: 'row-value', text: 'Tanlash' }),
+        onclick: () => openSystemSettings(() => notifier.openChannelSettings()),
+      }),
+    ]),
+    el('p', { class: 'group-foot', text: 'Ovoz telefonning o\'z sozlamalarida tanlanadi.' }),
+  ] : [];
+
   body.replaceChildren(
-    el('p', { class: 'group-label', text: 'Telegram' }), tgGroup,
-    el('p', { class: 'group-foot', text: "Telegram eslatmalari keyingi yangilanishda qo'shiladi." }),
     el('p', { class: 'group-label', text: 'Eslatmalar' }), remindGroup,
-    el('p', { class: 'group-foot', text: `Soatlik xabarda doim bo'ladi: kunlik vazifalar va deadline'i bugun bo'lganlar. Qolganlari — tanlangan yulduzdan yuqorilari. Vaqt zonasi: ${timezone}.` }),
+    el('p', { class: 'group-foot', text: `Ertalab — bugungi va muddati o'tgan vazifalar, kechqurun — bajarilmay qolganlari. Jim soatlarda eslatma kelmaydi. Vaqt zonasi: ${timezone}.` }),
+    el('p', { class: 'group-label', text: 'Deadline' }), leadGroup, lead.hint,
+    ...soundParts,
     el('p', { class: 'footer-note', text: "Vazifalar · Ma'lumotlar faqat shu qurilmada saqlanadi" }),
   );
+  renderPermissionWarnings();
 }
 
 async function saveMinImportance(e) {
-  const value = Number(e.target.value);
-  try {
-    state.me = await store.updateSettings({ reminder_min_importance: value });
-    toast('Saqlandi');
-  } catch (err) {
-    toast(err.message);
-  }
+  await saveSetting({ reminder_min_importance: Number(e.target.value) }).catch(() => {});
 }
 
 // ---------- Hodisalar ----------
@@ -968,7 +1088,7 @@ function bind() {
   $('prevPeriod').addEventListener('click', () => { haptic(4); state.report.offset -= 1; loadReport(); });
   $('nextPeriod').addEventListener('click', () => { if (state.report.offset < 0) { haptic(4); state.report.offset += 1; loadReport(); } });
 
-  // Telegram'dan "bajarildi" qilinganlari ham ko'rinsin — daqiqada bir marta jimgina yangilaymiz.
+  // Kun almashsa kunlik vazifalar yana "bajarilmagan"ga qaytadi — daqiqada bir marta jimgina yangilaymiz.
   setInterval(() => {
     if (state.me && !document.hidden && $('sheet').hidden && state.tab === 'today') loadTasks().catch(() => {});
   }, 60 * 1000);
@@ -989,15 +1109,21 @@ bind();
     toast("Ma'lumotlar bazasini ochib bo'lmadi. Sahifani yangilab ko'ring.");
     return;
   }
+  // Eslatmalar ilovani to'smaydi: xato bo'lsa ham ro'yxat ishlayveradi.
+  // showApp'dan oldin: sozlamalar ekrani ochilganda qaysi qatorlar ko'rinishi ma'lum bo'lsin.
+  try {
+    notifier = await getNotifier();
+    state.notifySupported = await notifier.isSupported();
+  } catch (err) {
+    console.warn('Eslatmalar moduli yuklanmadi:', err);
+  }
   try {
     await showApp();
   } catch (err) {
     toast(err.message);
   }
-  // Eslatmalar ilovani to'smaydi: xato bo'lsa ham ro'yxat ishlayveradi.
   try {
-    notifier = await getNotifier();
-    await askNotificationPermissionOnce();
+    if (notifier) await askNotificationPermissionOnce();
   } catch (err) {
     console.warn('Bildirishnoma ruxsatini tekshirib bo\'lmadi:', err);
   }

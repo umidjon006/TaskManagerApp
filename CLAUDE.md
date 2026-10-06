@@ -60,6 +60,15 @@ Eslatmalar `src/core/schedule.js` (`buildSchedule`) da hisoblanadi — sof
 funksiya, `now` argument sifatida keladi. Platforma faqat natijani
 jadvallaydi, o'zi hech narsa hisoblamaydi. Natija ko'pi bilan 60 ta.
 
+Play Store: `USE_EXACT_ALARM` ni Google Play faqat budilnik va kalendar
+ilovalariga ruxsat beradi. Hozir ilova APK sifatida to'g'ridan-to'g'ri
+o'rnatiladi — muammo yo'q. Play'ga chiqarilsa: `USE_EXACT_ALARM` ni olib
+tashlang va `SCHEDULE_EXACT_ALARM` ga `android:maxSdkVersion="32"` qo'shing.
+
+Release build: `abiFilters` yoki App Bundle kerak. Debug APK 13 MB dan
+21 MB ga o'sdi — asosan to'rtta ABI uchun `libsqlcipher.so`, garchi
+shifrlash ishlatilmasa ham.
+
 ## Til
 
 UI matnlari va kod izohlari — o'zbekcha. Texnik atamalar inglizcha.
