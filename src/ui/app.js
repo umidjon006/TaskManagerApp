@@ -1,11 +1,15 @@
 // Vazifalar — iOS uslubidagi mijoz qismi (framework'siz).
 // Ma'lumotlar features/store.js orqali — qurilma ichidagi SQLite, server yo'q.
 import * as Charts from './charts.js';
-import { openDatabase } from '../platform/index.js';
+import { openDatabase, getNotifier, onAppResume } from '../platform/index.js';
 import { createStore } from '../features/store.js';
+import { syncNotifications } from '../features/notifications.js';
 import schemaSql from '../data/schema.sql?raw';
 
 const DONE_COLLAPSED_KEY = 'vazifalar_done_collapsed';
+// Bildirishnoma ruxsati bir marta so'raldi — rad etilsa har ochilishda qayta so'ramaymiz.
+// Yo'qolsa, eng ko'pi bilan yana bir marta so'raladi (Android o'zi ham ikkinchi raddan keyin so'ramaydi).
+const NOTIF_ASKED_KEY = 'vazifalar_notif_asked';
 
 const TYPE_LABELS = { doimiy: 'Doimiy', kunlik: 'Kunlik', haftalik: 'Haftalik', oylik: 'Oylik' };
 const TYPE_HINTS = {
@@ -32,6 +36,7 @@ const state = {
   streak: 0,
   report: { period: 'day', offset: 0, data: null },
   scroll: {},
+  notifications: null, // oxirgi syncNotifications natijasi: { scheduled, exactAlarm } yoki { skipped }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -99,6 +104,42 @@ function importanceLabel(n) {
 
 // boot() da db ochilib, store.init() tugagandan keyin o'rnatiladi.
 let store = null;
+let notifier = null;
+
+// ---------- Eslatmalar ----------
+
+// Jadvalni o'zgartira oladigan store amallari: muvaffaqiyatli tugagach eslatmalar qayta jadvallanadi.
+// Har bir chaqiruv joyiga alohida yozish o'rniga shu yerda — yangi joy qo'shilsa ham unutilmaydi.
+const SCHEDULE_MUTATIONS = ['createTask', 'updateTask', 'deleteTask', 'restoreTask', 'toggleTask', 'updateSettings'];
+
+function withNotificationSync(s) {
+  for (const name of SCHEDULE_MUTATIONS) {
+    const original = s[name].bind(s);
+    s[name] = async (...args) => {
+      const result = await original(...args);
+      resyncNotifications();
+      return result;
+    };
+  }
+  return s;
+}
+
+// Debounce features/notifications.js da: ketma-ket chaqiruvlar bitta ishga birlashadi.
+function resyncNotifications() {
+  if (!store || !notifier) return;
+  syncNotifications(store, notifier)
+    .then((result) => { state.notifications = result; })
+    .catch((err) => console.warn('Eslatmalarni jadvallab bo\'lmadi:', err));
+}
+
+// Birinchi ishga tushishda — bir marta. Rad etilsa — boshqa so'ralmaydi (sozlamalardan yoqiladi, 5c).
+async function askNotificationPermissionOnce() {
+  if (!(await notifier.isSupported())) return;
+  const { notifications } = await notifier.checkPermissions();
+  if (notifications !== 'prompt' || readStore(NOTIF_ASKED_KEY)) return;
+  writeStore(NOTIF_ASKED_KEY, '1');
+  await notifier.requestPermissions();
+}
 
 async function withLoading(button, fn) {
   button.classList.add('loading');
@@ -941,7 +982,7 @@ bind();
 (async function boot() {
   try {
     const db = await openDatabase();
-    store = createStore(db, { migrations: [schemaSql] });
+    store = withNotificationSync(createStore(db, { migrations: [schemaSql] }));
     await store.init();
   } catch (err) {
     console.error(err);
@@ -953,4 +994,15 @@ bind();
   } catch (err) {
     toast(err.message);
   }
+  // Eslatmalar ilovani to'smaydi: xato bo'lsa ham ro'yxat ishlayveradi.
+  try {
+    notifier = await getNotifier();
+    await askNotificationPermissionOnce();
+  } catch (err) {
+    console.warn('Bildirishnoma ruxsatini tekshirib bo\'lmadi:', err);
+  }
+  resyncNotifications();
+  // Oldingi planga qaytganda: kun almashgan, ruxsat o'zgargan yoki Android aniq budilnik
+  // ruxsati olib qo'yilganda o'chirib yuborgan eslatmalar qayta qo'yiladi.
+  onAppResume(resyncNotifications).catch((err) => console.warn(err));
 }());

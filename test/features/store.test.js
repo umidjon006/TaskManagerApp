@@ -162,15 +162,34 @@ test("getReport: noto'g'ri davr yoki offset — xato", async () => {
   }
 });
 
-test("getMe: user yo'q, telegram ulanmagan, sozlamalar ko'rinish formatida", async () => {
+test("getMe: telegram maydoni yo'q, sozlamalar ko'rinish formatida", async () => {
   const { store } = await freshStore();
   assert.deepEqual(await store.getMe(), {
-    telegram: { connected: false },
-    settings: { reminder_min_importance: 5 },
+    settings: { reminder_min_importance: 5, lead_minutes: [60, 10, 0] },
     quiet_hours: '22:00–07:00',
     summary_hour: '21:00',
+    morning_hour: '09:00',
     timezone: 'Asia/Tashkent',
   });
+});
+
+test('getMe: lead_minutes va morning_hour o\'zgarishi va o\'chirilishi', async () => {
+  const { store } = await freshStore();
+  let me = await store.updateSettings({ lead_minutes: '30', morning_hour: 7 });
+  assert.deepEqual(me.settings.lead_minutes, [30]);
+  assert.equal(me.morning_hour, '07:00');
+  me = await store.updateSettings({ lead_minutes: '', morning_hour: '' });
+  assert.deepEqual(me.settings.lead_minutes, []);
+  assert.equal(me.morning_hour, null);
+});
+
+test('getSettings: saqlangan xom qiymatlar va joriy vaqt zonasi', async () => {
+  const { store } = await freshStore();
+  assert.deepEqual(await store.getSettings(), DEFAULT_SETTINGS);
+  await store.updateSettings({ timezone: 'Europe/London', quiet_hours: '' });
+  const s = await store.getSettings();
+  assert.equal(s.timezone, 'Europe/London');
+  assert.equal(s.quiet_hours, '');
 });
 
 test('updateSettings: saqlanadi va yangi store ochilganda ham turadi', async () => {

@@ -9,3 +9,19 @@ export async function openDatabase() {
   const adapter = Capacitor.isNativePlatform() ? await import('./capacitor.js') : await import('./web.js');
   return adapter.openDatabase();
 }
+
+// Eslatmalar: tabiiy ilovada — capacitor-notifications.js, boshqa joyda — no-op web-notifications.js.
+export async function getNotifier() {
+  return Capacitor.isNativePlatform()
+    ? import('./capacitor-notifications.js')
+    : import('./web-notifications.js');
+}
+
+// Ilova oldingi planga qaytganda. Brauzerda — hech narsa (eslatmalar u yerda yo'q).
+export async function onAppResume(callback) {
+  if (!Capacitor.isNativePlatform()) return;
+  const { App } = await import('@capacitor/app');
+  await App.addListener('appStateChange', ({ isActive }) => {
+    if (isActive) callback();
+  });
+}

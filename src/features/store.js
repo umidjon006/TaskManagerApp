@@ -166,22 +166,32 @@ export function createStore(db, { migrations, clock = () => new Date() } = {}) {
       return buildReport({ ...history, period, offset, now: clock(), tz: zone() });
     },
 
-    // Telegram ulanishi 7-bosqichda; hozircha doim ulanmagan.
+    // Sozlamalar ko'rinish formatida (UI uchun).
     async getMe() {
       const timezone = zone();
       const s = await repo.getSettings(db);
       const quiet = parseQuietHours(s.quiet_hours);
       const summary = parseSummaryHour(s.summary_hour);
+      const morning = parseMorningHour(s.morning_hour);
       return {
-        telegram: { connected: false },
-        settings: { reminder_min_importance: Number(s.reminder_min_importance) },
+        settings: {
+          reminder_min_importance: Number(s.reminder_min_importance),
+          lead_minutes: parseLeadMinutes(s.lead_minutes),
+        },
         quiet_hours: quiet ? `${pad(quiet.start)}:00–${pad(quiet.end)}:00` : null,
         summary_hour: summary === null ? null : `${pad(summary)}:00`,
+        morning_hour: morning === null ? null : `${pad(morning)}:00`,
         timezone,
       };
     },
 
-    // patch — { reminder_min_importance?, quiet_hours?, summary_hour?, timezone? }.
+    // Sozlamalar saqlangan (xom satr) ko'rinishida — core/schedule.js buildSchedule() uchun.
+    async getSettings() {
+      const timezone = zone();
+      return { ...(await repo.getSettings(db)), timezone };
+    },
+
+    // patch — { reminder_min_importance?, quiet_hours?, summary_hour?, timezone?, lead_minutes?, morning_hour? }.
     // Avval hammasi tekshiriladi, keyin bitta tranzaksiyada yoziladi. Yangilangan getMe() qaytadi.
     async updateSettings(patch) {
       zone();
