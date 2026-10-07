@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test test/core/*.test.js test/data/*.test.js test/features/*.test.js test/platform/*.test.js"
+    "test": "node --test test/core/*.test.js test/data/*.test.js test/features/*.test.js test/platform/*.test.js",
+    "release:android": "node scripts/release-android.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.2",

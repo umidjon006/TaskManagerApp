@@ -1,21 +1,26 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# R8 (release) uchun qo'shimcha qoidalar.
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Capacitor plaginlari (@CapacitorPlugin, @PluginMethod, *Callback) — capacitor-android'ning
+# consumer qoidalari bilan saqlanadi. SQLCipher (JNI) — sqlcipher-android AAR'ning o'z qoidalari bilan.
+# Bu yerda — ular qamramaydigan narsalar.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Ilovaning o'z plaginlari (NotificationSettingsPlugin) — MainActivity'da sinf bo'yicha ro'yxatdan o'tadi,
+# metodlari JS'dan nomi bo'yicha chaqiriladi.
+-keep class uz.task.vazifalar.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# WebView ↔ JS ko'prigi (Capacitor MessageHandler: addJavascriptInterface).
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Plaginlar annotatsiyalarni ish vaqtida o'qiydi (getAnnotation).
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# Crash stack trace'lari o'qilishi uchun qator raqamlari saqlanadi (mapping.txt bilan tiklanadi).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Tink (androidx.security:security-crypto orqali, sqlite plagini olib keladi) faqat kompilyatsiya
+# vaqtidagi annotatsiyalarga havola qiladi — ish vaqtida ular yo'q va kerak emas.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**

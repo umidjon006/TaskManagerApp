@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// Release imzosi android/keystore.properties dan o'qiladi (.gitignore'da; namuna —
+// keystore.properties.example). Fayl yo'q bo'lsa release build ATAYLAB yiqiladi:
+// debug kalitiga jimgina qaytish boshqa imzoli APK beradi — telefonga o'rnatib bo'lmaydi
+// yoki eski ilovani o'chirib, foydalanuvchi ma'lumotini yo'qotishga majbur qiladi.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+def signingKeys = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+def missingSigningKeys = signingKeys.findAll { !keystoreProperties.getProperty(it)?.trim() }
+
+// Faqat arm qurilmalar uchun native kutubxonalar (libsqlcipher.so). x86/x86_64 — asosan emulyatorlar.
+// Emulyator uchun barcha ABI kerak bo'lsa: ./gradlew assembleDebug -PallAbis
+def appAbis = project.hasProperty('allAbis') ? ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'] : ['arm64-v8a', 'armeabi-v7a']
+
 android {
     namespace = "uz.task.vazifalar"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -10,16 +26,34 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters(*appAbis)
+        }
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (missingSigningKeys.isEmpty()) {
+                storeFile rootProject.file(keystoreProperties.getProperty('storeFile'))
+                storePassword keystoreProperties.getProperty('storePassword')
+                keyAlias keystoreProperties.getProperty('keyAlias')
+                keyPassword keystoreProperties.getProperty('keyPassword')
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            // R8: ishlatilmagan kod va resurslar olib tashlanadi. Capacitor plaginlari nomi bo'yicha
+            // (refleksiya) topiladi — keep qoidalari: capacitor-android'ning consumer qoidalari +
+            // proguard-rules.pro. Debug build'ga tegmaydi.
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig missingSigningKeys.isEmpty() ? signingConfigs.release : null
         }
     }
 }
@@ -43,6 +77,26 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// Release vazifasi boshlanishidan oldin — imzo sozlamasi to'liqmi. Debug build'ga ta'sir qilmaydi.
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    doFirst {
+        if (!keystorePropertiesFile.exists()) {
+            throw new GradleException(
+                "\n\nRelease imzosi sozlanmagan: ${keystorePropertiesFile} topilmadi.\n" +
+                "  cp android/keystore.properties.example android/keystore.properties\n" +
+                "va parollarni to'ldiring. Bu fayl commit qilinmaydi (.gitignore).\n" +
+                "Debug kalit bilan imzolash ATAYLAB o'chirilgan: imzo boshqa bo'lsa, APK eski ilova ustiga o'rnatilmaydi.\n")
+        }
+        if (!missingSigningKeys.isEmpty()) {
+            throw new GradleException("\n\nandroid/keystore.properties to'liq emas, yetishmayapti: ${missingSigningKeys.join(', ')}\n")
+        }
+        def store = rootProject.file(keystoreProperties.getProperty('storeFile'))
+        if (!store.exists()) {
+            throw new GradleException("\n\nKeystore topilmadi: ${store}\nkeystore.properties dagi storeFile yo'lini tekshiring (android/ papkasiga nisbatan).\n")
+        }
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')
