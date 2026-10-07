@@ -1,9 +1,10 @@
 // Vazifalar — iOS uslubidagi mijoz qismi (framework'siz).
 // Ma'lumotlar features/store.js orqali — qurilma ichidagi SQLite, server yo'q.
 import * as Charts from './charts.js';
-import { openDatabase, getNotifier, onAppResume } from '../platform/index.js';
+import { openDatabase, getNotifier, getFiles, onAppResume } from '../platform/index.js';
 import { createStore } from '../features/store.js';
 import { syncNotifications } from '../features/notifications.js';
+import { exportData, importData, parseBackup } from '../features/backup.js';
 import schemaSql from '../data/schema.sql?raw';
 
 const DONE_COLLAPSED_KEY = 'vazifalar_done_collapsed';
@@ -38,6 +39,9 @@ const state = {
   scroll: {},
   notifications: null, // oxirgi syncNotifications natijasi: { scheduled, exactAlarm } yoki { skipped, permission? }
   notifySupported: false, // tabiiy ilova — eslatma qatorlari ko'rinadi
+  // Tanlangan, tekshirilgan zaxira fayli — usul (qo'shish/almashtirish) tanlanishini kutmoqda.
+  // replaceArmed — "Almashtirish" bir marta bosildi, ikkinchi bosish tasdiqlaydi.
+  pendingImport: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -111,7 +115,7 @@ let notifier = null;
 
 // Jadvalni o'zgartira oladigan store amallari: muvaffaqiyatli tugagach eslatmalar qayta jadvallanadi.
 // Har bir chaqiruv joyiga alohida yozish o'rniga shu yerda — yangi joy qo'shilsa ham unutilmaydi.
-const SCHEDULE_MUTATIONS = ['createTask', 'updateTask', 'deleteTask', 'restoreTask', 'toggleTask', 'updateSettings'];
+const SCHEDULE_MUTATIONS = ['createTask', 'updateTask', 'deleteTask', 'restoreTask', 'toggleTask', 'updateSettings', 'importBackup'];
 
 function withNotificationSync(s) {
   for (const name of SCHEDULE_MUTATIONS) {
@@ -986,6 +990,113 @@ function leadChips(selected) {
   return { panel: el('div', { class: 'chips-panel' }, [el('div', { class: 'chip-wrap', role: 'group', 'aria-label': "Deadline'dan qancha oldin eslatilsin" }, chips)]), hint };
 }
 
+// ---------- Zaxira ----------
+
+async function exportBackup(e) {
+  const row = e.currentTarget;
+  await withLoading(row, async () => {
+    try {
+      const { filename, json } = await exportData(store);
+      const { shared } = await (await getFiles()).saveAndShare(filename, json);
+      if (shared) toast('Zaxira nusxa tayyor');
+    } catch (err) {
+      console.error(err);
+      toast("Zaxira nusxa olib bo'lmadi");
+    }
+  });
+}
+
+// Fayl tanlanadi va DARHOL tekshiriladi: buzuq fayl bo'lsa usul so'ralmaydi.
+async function pickBackup() {
+  haptic(5);
+  let picked;
+  try {
+    picked = await (await getFiles()).pickFile();
+  } catch (err) {
+    console.error(err);
+    toast("Faylni o'qib bo'lmadi");
+    return;
+  }
+  if (!picked) return;
+  try {
+    state.pendingImport = { name: picked.name, data: parseBackup(picked.text), replaceArmed: false };
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  renderSettings();
+}
+
+function cancelImport() {
+  state.pendingImport = null;
+  renderSettings();
+}
+
+async function applyImport(mode, row) {
+  const pending = state.pendingImport;
+  if (!pending) return;
+  if (mode === 'replace' && !pending.replaceArmed) {
+    haptic(15);
+    pending.replaceArmed = true;
+    renderSettings();
+    return;
+  }
+  await withLoading(row, async () => {
+    try {
+      const { added, skipped, errors } = await importData(store, pending.data, { mode });
+      if (errors.length) console.warn(errors.join('\n'));
+      state.pendingImport = null;
+      await refreshAfterImport();
+      toast(mode === 'merge' && skipped.tasks
+        ? `${added.tasks} ta vazifa qo'shildi, ${skipped.tasks} tasi allaqachon bor edi`
+        : `Tiklandi: ${added.tasks} ta vazifa`);
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+}
+
+// Import hamma narsani o'zgartirishi mumkin: ro'yxat, hisobot, sozlamalar. Eslatmalar — store o'rami orqali.
+async function refreshAfterImport() {
+  await refreshMe();
+  state.report.data = null;
+  state.report.offset = 0;
+  await loadTasks();
+  loadStreak();
+  renderSettings();
+}
+
+function fileDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return `${d.getDate()}-${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function backupRows() {
+  const p = state.pendingImport;
+  if (!p) {
+    return [
+      settingsRow({ iconName: 'i-arrow-up', tint: 'tint-blue', text: 'Zaxira nusxa olish', onclick: exportBackup }),
+      settingsRow({ iconName: 'i-arrow-down', tint: 'tint-green', text: 'Zaxiradan tiklash', onclick: pickBackup }),
+    ];
+  }
+  const date = fileDate(p.data.exportedAt);
+  return [
+    settingsRow({ iconName: 'i-table', tint: 'tint-gray', text: p.name, sub: `${p.data.tasks.length} ta vazifa${date ? ` · ${date}` : ''}` }),
+    settingsRow({
+      iconName: 'i-plus', tint: 'tint-green', text: "Qo'shish", sub: "Borlari qoladi, yo'qlari qo'shiladi",
+      onclick: (e) => applyImport('merge', e.currentTarget),
+    }),
+    settingsRow({
+      iconName: 'i-trash', tint: 'tint-red',
+      text: p.replaceArmed ? 'Tasdiqlang: almashtirish' : 'Almashtirish',
+      sub: p.replaceArmed ? "Hozirgi vazifalar, tarix va sozlamalar o'chadi. Yana bosing" : "Hammasi o'chib, fayldagisi yoziladi",
+      onclick: (e) => applyImport('replace', e.currentTarget),
+    }),
+    settingsRow({ iconName: 'i-x', tint: 'tint-gray', text: 'Bekor qilish', onclick: cancelImport }),
+  ];
+}
+
 function renderSettings() {
   if (!state.me) return;
   const { settings, quiet_hours: quiet, summary_hour: summaryHour, morning_hour: morningHour, timezone } = state.me;
@@ -1026,6 +1137,10 @@ function renderSettings() {
     el('p', { class: 'group-foot', text: `Ertalab — bugungi va muddati o'tgan vazifalar, kechqurun — bajarilmay qolganlari. Jim soatlarda eslatma kelmaydi. Vaqt zonasi: ${timezone}.` }),
     el('p', { class: 'group-label', text: 'Deadline' }), leadGroup, lead.hint,
     ...soundParts,
+    el('p', { class: 'group-label', text: 'Zaxira' }), el('div', { class: 'group' }, backupRows()),
+    el('p', { class: 'group-foot', text: state.notifySupported
+      ? "Ma'lumotlar faqat shu qurilmada. Android ularni Google Drive'ga o'zi ham zaxiralaydi; bu yerdagi fayl — qo'lda olinadigan nusxa."
+      : "Ma'lumotlar faqat shu brauzer xotirasida. Brauzer tozalansa yo'qoladi — vaqti-vaqti bilan nusxa olib turing." }),
     el('p', { class: 'footer-note', text: "Vazifalar · Ma'lumotlar faqat shu qurilmada saqlanadi" }),
   );
   renderPermissionWarnings();

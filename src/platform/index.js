@@ -17,6 +17,13 @@ export async function getNotifier() {
     : import('./web-notifications.js');
 }
 
+// Fayllar (zaxira): tabiiy ilovada — saqlash + ulashish oynasi, brauzerda — yuklab olish.
+export async function getFiles() {
+  return Capacitor.isNativePlatform()
+    ? import('./capacitor-files.js')
+    : import('./web-files.js');
+}
+
 // Ilova oldingi planga qaytganda. Brauzerda — hech narsa (eslatmalar u yerda yo'q).
 export async function onAppResume(callback) {
   if (!Capacitor.isNativePlatform()) return;

@@ -105,3 +105,37 @@ export async function setSetting(db, key, value) {
   await db.run('UPDATE settings SET value = ? WHERE key = ?', [String(value), key]);
   await db.run('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
 }
+
+// ---------- Zaxira (features/backup.js) ----------
+
+// Merge kaliti: created_at — vazifa yaratilganda bir marta yoziladi va hech qachon o'zgarmaydi,
+// qurilmalar orasida ham saqlanadi (import uni ko'chiradi). id esa har qurilmada boshqa.
+export async function findTaskByCreatedAt(db, createdAt) {
+  return (await db.get('SELECT * FROM tasks WHERE created_at = ? ORDER BY id LIMIT 1', [createdAt])) || null;
+}
+
+// Zaxiradagi vazifa — barcha maydonlari bilan (deleted_at, created_at ham). Yangi id qaytadi.
+export async function insertTaskRow(db, row) {
+  const { lastInsertRowid } = await db.run(
+    `INSERT INTO tasks (title, description, type, importance, deadline, deleted_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [row.title, row.description, row.type, row.importance, row.deadline, row.deleted_at, row.created_at, row.updated_at],
+  );
+  return lastInsertRowid;
+}
+
+// Bor bo'lsa — tegmaydi (UNIQUE task_id + period_key). Qo'shildimi — true/false.
+export async function insertCompletion(db, taskId, periodKey, completedAt) {
+  const { changes } = await db.run(
+    'INSERT OR IGNORE INTO task_completions (task_id, period_key, completed_at) VALUES (?, ?, ?)',
+    [taskId, periodKey, completedAt],
+  );
+  return changes > 0;
+}
+
+// Hamma narsa o'chadi: bajarilishlar, vazifalar, sozlamalar. Tranzaksiya ichida chaqiriladi.
+export async function wipeAll(db) {
+  await db.run('DELETE FROM task_completions');
+  await db.run('DELETE FROM tasks');
+  await db.run('DELETE FROM settings');
+}

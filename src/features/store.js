@@ -191,6 +191,70 @@ export function createStore(db, { migrations, clock = () => new Date() } = {}) {
       return { ...(await repo.getSettings(db)), timezone };
     },
 
+    // Zaxira uchun xom ma'lumot: sozlamalar, barcha vazifalar (o'chirilganlari bilan) va bajarilishlar.
+    async exportBackup() {
+      const settings = await this.getSettings();
+      const { tasks, completions } = await repo.loadHistory(db);
+      return { settings, tasks, completions };
+    },
+
+    // data — features/backup.js parseBackup() tekshirgan ma'lumot. Hammasi bitta tranzaksiyada:
+    // xato bo'lsa hech narsa o'zgarmaydi.
+    //   merge   — mavjudlari qoladi; created_at bo'yicha topilmagan vazifalar va yo'q bajarilishlar qo'shiladi.
+    //             Sozlamalarga tegilmaydi.
+    //   replace — hammasi o'chiriladi, keyin fayldagi vazifalar va sozlamalar yoziladi.
+    async importBackup(data, { mode } = {}) {
+      zone();
+      if (mode !== 'merge' && mode !== 'replace') fail("Tiklash usuli noto'g'ri");
+      const errors = [];
+      // Sozlamalar yozishdan OLDIN tekshiriladi. Noma'lum kalitlar tashlab ketiladi.
+      const settings = { ...DEFAULT_SETTINGS };
+      if (mode === 'replace') {
+        for (const [key, value] of Object.entries(data.settings)) {
+          if (!Object.hasOwn(SETTING_PARSERS, key)) {
+            errors.push(`Noma'lum sozlama tashlab ketildi: ${key}`);
+            continue;
+          }
+          try {
+            settings[key] = SETTING_PARSERS[key](value);
+          } catch (err) {
+            fail(`Fayldagi sozlama noto'g'ri (${key}): ${err.message}`);
+          }
+        }
+      }
+
+      const added = { tasks: 0, completions: 0 };
+      const skipped = { tasks: 0, completions: 0 };
+      await db.exec('BEGIN');
+      try {
+        if (mode === 'replace') {
+          await repo.wipeAll(db);
+          for (const [key, value] of Object.entries(settings)) await repo.setSetting(db, key, value);
+        }
+        const idMap = new Map(); // fayldagi id → bazadagi id
+        for (const task of data.tasks) {
+          const existing = mode === 'merge' ? await repo.findTaskByCreatedAt(db, task.created_at) : null;
+          if (existing) {
+            idMap.set(task.id, existing.id);
+            skipped.tasks += 1;
+          } else {
+            idMap.set(task.id, await repo.insertTaskRow(db, task));
+            added.tasks += 1;
+          }
+        }
+        for (const c of data.completions) {
+          if (await repo.insertCompletion(db, idMap.get(c.task_id), c.period_key, c.completed_at)) added.completions += 1;
+          else skipped.completions += 1;
+        }
+        await db.exec('COMMIT');
+      } catch (err) {
+        await db.exec('ROLLBACK');
+        throw err;
+      }
+      if (mode === 'replace') tz = settings.timezone;
+      return { added, skipped, errors };
+    },
+
     // patch — { reminder_min_importance?, quiet_hours?, summary_hour?, timezone?, lead_minutes?, morning_hour? }.
     // Avval hammasi tekshiriladi, keyin bitta tranzaksiyada yoziladi. Yangilangan getMe() qaytadi.
     async updateSettings(patch) {
