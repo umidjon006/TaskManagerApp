@@ -58,3 +58,11 @@ test('kun yakuni soati: standart 21, bo\'sh — o\'chiq, noto\'g\'ri — xato', 
 test('formatLocal: DD.MM.YYYY SS:DD', () => {
   assert.equal(T.formatLocal(new Date('2026-09-29T13:05:00Z'), TZ), '29.09.2026 18:05');
 });
+
+test("yil yordamchilari: yearStart, yearEnd, addYears", () => {
+  assert.equal(T.yearStart('2026-10-07'), '2026-01-01');
+  assert.equal(T.yearEnd('2026-10-07'), '2026-12-31');
+  assert.equal(T.addYears('2026-10-07', -1), '2025-01-01');
+  assert.equal(T.addYears('2026-01-01', 2), '2028-01-01');
+  assert.equal(T.monthEnd('2028-02-01'), '2028-02-29'); // kabisa yil
+});

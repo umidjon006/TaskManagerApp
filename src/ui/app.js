@@ -760,7 +760,7 @@ async function saveTask() {
 
 // ---------- Hisobot ----------
 
-const PERIOD_UNIT = { day: 'kun', week: 'hafta', month: 'oy' };
+const PERIOD_UNIT = { day: 'kun', week: 'hafta', month: 'oy', year: 'yil' };
 
 async function loadReport() {
   const body = $('reportBody');
@@ -831,20 +831,20 @@ function renderReport(r) {
   const activityBox = el('div', { class: 'chart' });
   const activityCard = el('div', { class: 'card chart-card' }, [
     el('h3', { text: 'Qachon bajardingiz' }),
-    el('p', { class: 'chart-sub', text: r.period === 'day' ? "Soatlar bo'yicha bajarilgan vazifalar soni" : "Kunlar bo'yicha bajarilgan vazifalar soni" }),
+    el('p', { class: 'chart-sub', text: `${{ day: 'Soatlar', year: 'Oylar' }[r.period] || 'Kunlar'} bo'yicha bajarilgan vazifalar soni` }),
     activityBox,
-    Charts.tableView([r.period === 'day' ? 'Soat' : 'Kun', 'Bajarildi'], r.activity.filter((a) => !a.future).map((a) => [a.full_label || `${a.label}:00`, a.value])),
+    Charts.tableView([{ day: 'Soat', year: 'Oy' }[r.period] || 'Kun', 'Bajarildi'], r.activity.filter((a) => !a.future).map((a) => [a.full_label || `${a.label}:00`, a.value])),
   ]);
   cards.push(activityCard);
 
   // 3) O'sish dinamikasi
   const trendBox = el('div', { class: 'chart' });
-  const trendSub = { day: "So'nggi 14 kun", week: "So'nggi 8 hafta", month: "So'nggi 6 oy" }[r.period];
+  const trendSub = { day: "So'nggi 14 kun", week: "So'nggi 8 hafta", month: "So'nggi 6 oy", year: "Oylar bo'yicha" }[r.period];
   cards.push(el('div', { class: 'card chart-card' }, [
     el('h3', { text: "O'sish dinamikasi" }),
     el('p', { class: 'chart-sub', text: `${trendSub} — bajarilish foizi` }),
     trendBox,
-    Charts.tableView(['Davr', 'Bajarildi', 'Foiz'], r.trend.map((p) => [p.full_label, `${p.done}/${p.expected}`, p.rate === null ? '—' : `${p.rate}%`])),
+    Charts.tableView(['Davr', 'Bajarildi', 'Foiz'], r.trend.filter((p) => !p.future).map((p) => [p.full_label, `${p.done}/${p.expected}`, p.rate === null ? '—' : `${p.rate}%`])),
   ]));
 
   // 4) Turlar va muhimlik bo'yicha
@@ -1139,7 +1139,7 @@ function renderSettings() {
     ...soundParts,
     el('p', { class: 'group-label', text: 'Zaxira' }), el('div', { class: 'group' }, backupRows()),
     el('p', { class: 'group-foot', text: state.notifySupported
-      ? "Ma'lumotlar faqat shu qurilmada. Android ularni Google Drive'ga o'zi ham zaxiralaydi; bu yerdagi fayl — qo'lda olinadigan nusxa."
+      ? "Ma'lumotlar faqat shu qurilmada. Telefonda zaxira yoqilgan bo'lsa, Android ularni Google Drive'ga ham saqlashi mumkin — ishonchli yo'l esa vaqti-vaqti bilan shu yerdan nusxa olib turish."
       : "Ma'lumotlar faqat shu brauzer xotirasida. Brauzer tozalansa yo'qoladi — vaqti-vaqti bilan nusxa olib turing." }),
     el('p', { class: 'footer-note', text: "Vazifalar · Ma'lumotlar faqat shu qurilmada saqlanadi" }),
   );

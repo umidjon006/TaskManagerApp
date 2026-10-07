@@ -183,9 +183,12 @@ function lineChart(container, points) {
   });
 
   // Oxirgi qiymatga to'g'ridan-to'g'ri yorliq (faqat bitta — "raqam har nuqtada" emas)
-  const last = points[n - 1];
+  // Yil ko'rinishida oxirgi oylar hali kelmagan (future) — yorliq kelganlarining oxirgisiga.
+  let lastIdx = n - 1;
+  while (lastIdx > 0 && points[lastIdx].future) lastIdx -= 1;
+  const last = points[lastIdx];
   if (last && last.rate !== null) {
-    const t = svgEl('text', { x: x(n - 1) - 8, y: y(last.rate) - 10, 'text-anchor': 'end' });
+    const t = svgEl('text', { x: x(lastIdx) - 8, y: y(last.rate) - 10, 'text-anchor': 'end' });
     // Sirt rangidagi "halo" — yorliq chiziq ustida ham o'qiladi.
     t.style.cssText = 'fill:var(--label);font-weight:600;font-size:12px;paint-order:stroke;stroke:var(--cell);stroke-width:4px;stroke-linejoin:round';
     t.textContent = `${last.rate}%`;
@@ -203,7 +206,7 @@ function lineChart(container, points) {
     const p = points[i];
     cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
     tooltip.show(x(i), p.rate === null ? y(50) : y(p.rate) - 4,
-      p.rate === null ? "reja yo'q" : `${p.rate}%`,
+      p.rate === null ? (p.future ? 'hali kelmagan' : "reja yo'q") : `${p.rate}%`,
       `${p.full_label} · ${p.done}/${p.expected}`);
   };
   const hide = () => { cross.setAttribute('opacity', 0); tooltip.hide(); };

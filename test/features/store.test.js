@@ -155,9 +155,22 @@ test('getReport: day / week / month — core hisobotidan', async () => {
   assert.equal((await store.getReport()).period, 'day');
 });
 
+test("getReport: 'year' — shu yil va o'tgan yil", async () => {
+  const { store, clock } = await freshStore({ now: at('2026-09-28T08:00:00') });
+  const { task } = await store.createTask(input({ type: 'kunlik' }));
+  clock.now = NOW;
+  await store.toggleTask(task.id);
+  const year = await store.getReport('year');
+  assert.deepEqual([year.period, year.range.start, year.range.end, year.range.label], ['year', '2026-01-01', '2026-12-31', 'Shu yil']);
+  assert.deepEqual([year.summary.expected, year.summary.done], [4, 1]); // 28-sen – 1-okt
+  assert.equal(year.trend.length, 12);
+  const prev = await store.getReport('year', -1);
+  assert.deepEqual([prev.range.start, prev.range.label, prev.summary.expected], ['2025-01-01', "O'tgan yil", 0]);
+});
+
 test("getReport: noto'g'ri davr yoki offset — xato", async () => {
   const { store } = await freshStore();
-  for (const [period, offset] of [['year', 0], ['day', 1], ['day', -121], ['week', 0.5], ['day', '0']]) {
+  for (const [period, offset] of [['quarter', 0], ['day', 1], ['day', -121], ['week', 0.5], ['day', '0']]) {
     await assert.rejects(store.getReport(period, offset), { message: "Davr noto'g'ri tanlangan" });
   }
 });

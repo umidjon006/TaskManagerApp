@@ -136,6 +136,19 @@ function monthEnd(ds) {
   return addDays(addMonths(ds, 1), -1);
 }
 
+// Yil: "YYYY-01-01" / "YYYY-12-31". addYears — n yil keyingi yilning 1-yanvari.
+function yearStart(ds) {
+  return `${ds.slice(0, 4)}-01-01`;
+}
+
+function yearEnd(ds) {
+  return `${ds.slice(0, 4)}-12-31`;
+}
+
+function addYears(ds, n) {
+  return `${String(Number(ds.slice(0, 4)) + n).padStart(4, '0')}-01-01`;
+}
+
 function daysBetween(a, b) {
   return Math.round((dayToUtc(b) - dayToUtc(a)) / DAY_MS);
 }
@@ -178,6 +191,9 @@ export {
   monthStart,
   monthEnd,
   addMonths,
+  yearStart,
+  yearEnd,
+  addYears,
   daysBetween,
   currentKeys,
   dayLabel,

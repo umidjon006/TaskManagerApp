@@ -1,4 +1,4 @@
-// Hisobotlar: kunlik / haftalik / oylik bajarilish, qolib ketganlar, faollik va o'sish dinamikasi.
+// Hisobotlar: kunlik / haftalik / oylik / yillik bajarilish, qolib ketganlar, faollik va o'sish dinamikasi.
 //
 // Asosiy tushuncha — "bajarilishi kerak bo'lgan holat" (occurrence):
 //   kunlik   → har kun uchun bittadan, muddati — o'sha kun;
@@ -9,7 +9,9 @@
 
 import * as T from './time.js';
 
-const PERIODS = ['day', 'week', 'month'];
+// 'year' — faqat hisobot ko'rinishi; yillik vazifa TURI yo'q (time.js periodKey'ga tegilmaydi).
+const PERIODS = ['day', 'week', 'month', 'year'];
+// Yil uchun trend — o'sha yilning 12 oyi (pastda yearTrend), shuning uchun bu yerda yo'q.
 const TREND_LENGTH = { day: 14, week: 8, month: 6 };
 const IMPORTANCE_GROUPS = [
   { key: '10', label: '10★', min: 10, max: 10 },
@@ -33,6 +35,12 @@ function periodRange(period, today, offset) {
     const end = T.addDays(start, 6);
     const name = offset === 0 ? 'Shu hafta' : offset === -1 ? "O'tgan hafta" : `${T.dayLabel(start)} haftasi`;
     return { start, end, label: name, sublabel: `${T.dayLabel(start)} – ${T.dayLabel(end)}` };
+  }
+  if (period === 'year') {
+    const start = T.addYears(T.yearStart(today), offset);
+    const year = start.slice(0, 4);
+    const name = offset === 0 ? 'Shu yil' : offset === -1 ? "O'tgan yil" : `${year}-yil`;
+    return { start, end: T.yearEnd(start), label: name, sublabel: `1-yanvar – 31-dekabr, ${year}` };
   }
   const start = T.addMonths(T.monthStart(today), offset);
   const end = T.monthEnd(start);
@@ -132,6 +140,20 @@ function activity(ctx, period, range) {
     .map((c) => ({ c, parts: T.localParts(new Date(c.completed_at), tz) }))
     .filter(({ parts }) => parts.date >= range.start && parts.date <= range.end);
 
+  if (period === 'year') {
+    // 365 ta ustun o'qib bo'lmaydi — oylar bo'yicha 12 ta.
+    return Array.from({ length: 12 }, (_, i) => {
+      const first = T.addMonths(range.start, i);
+      const month = first.slice(0, 7);
+      return {
+        key: month,
+        label: capitalize(T.MONTHS_SHORT[i]),
+        full_label: `${capitalize(T.MONTHS[i])} ${first.slice(0, 4)}`,
+        value: inRange.filter(({ parts }) => parts.date.startsWith(month)).length,
+        future: first > today,
+      };
+    });
+  }
   if (period === 'day') {
     const nowHour = range.start === today ? T.localParts(now, tz).hour : 23;
     return Array.from({ length: 24 }, (_, h) => ({
@@ -154,7 +176,29 @@ function activity(ctx, period, range) {
   });
 }
 
-function trend(ctx, period, offset) {
+// Yil trendi: tanlangan yilning oylari (yanvar–dekabr), har biri — o'sha oydagi bajarilish foizi.
+// Kelajak oylar rate = null (chiziq uziladi, 0% deb ko'rsatilmaydi).
+function yearTrend(ctx, range) {
+  return Array.from({ length: 12 }, (_, i) => {
+    const start = T.addMonths(range.start, i);
+    const end = T.monthEnd(start);
+    const future = start > ctx.today;
+    const s = summarize(future ? [] : collect(ctx, start, end));
+    const monthName = capitalize(T.MONTHS[i]);
+    return {
+      label: capitalize(T.MONTHS_SHORT[i]),
+      full_label: `${monthName} ${start.slice(0, 4)}`,
+      rate: s.rate,
+      done: s.done,
+      expected: s.expected,
+      current: ctx.today >= start && ctx.today <= end,
+      future,
+    };
+  });
+}
+
+function trend(ctx, period, offset, range) {
+  if (period === 'year') return yearTrend(ctx, range);
   const points = [];
   for (let i = TREND_LENGTH[period] - 1; i >= 0; i -= 1) {
     const r = periodRange(period, ctx.today, offset - i);
@@ -232,7 +276,7 @@ function buildReport({ tasks, completions, period = 'day', offset = 0, now = new
     by_type: byType,
     by_importance: importance,
     activity: activity(ctx, period, range),
-    trend: trend(ctx, period, offset),
+    trend: trend(ctx, period, offset, range),
     streak: offset === 0 ? streak(ctx) : null,
     missed: occs.filter((o) => o.status === 'missed').sort(byImportance).map((o) => occurrenceItem(o, ctx.tz)),
     pending: occs.filter((o) => o.status === 'pending').sort(byImportance).map((o) => occurrenceItem(o, ctx.tz)),
