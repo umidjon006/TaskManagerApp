@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 10–11 ishga tushish ekrani: style.css dagi «bg» tokeni rangi, markazda ilova ikonkasi.
+     Android 12+ da tizim splash'i ishlaydi (styles.xml: windowSplashScreenBackground). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:width="96dp"
+        android:height="96dp"
+        android:gravity="center"
+        android:drawable="@mipmap/ic_launcher" />
+</layer-list>

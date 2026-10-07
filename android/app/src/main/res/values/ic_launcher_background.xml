@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Gradient (#34C759 → #0A84FF) o'rtasi. Asosiy fon — drawable/ic_launcher_background.xml. -->
+    <color name="ic_launcher_background">#1FA6AC</color>
 </resources>
