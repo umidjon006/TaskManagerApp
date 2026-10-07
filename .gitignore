@@ -15,3 +15,10 @@ android/build
 android/.gradle
 android/local.properties
 android/app/src/main/assets/public
+
+# Imzolash kalitlari — HECH QACHON commit qilinmaydi (repo ochiq).
+# Kalit yoki parol tushib qolsa, ilova imzosi butunlay buziladi.
+*.keystore
+*.jks
+keystore.properties
+android/keystore.properties

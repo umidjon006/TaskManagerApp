@@ -65,6 +65,14 @@ ilovalariga ruxsat beradi. Hozir ilova APK sifatida to'g'ridan-to'g'ri
 o'rnatiladi — muammo yo'q. Play'ga chiqarilsa: `USE_EXACT_ALARM` ni olib
 tashlang va `SCHEDULE_EXACT_ALARM` ga `android:maxSdkVersion="32"` qo'shing.
 
+INTERNET ruxsati: `AndroidManifest.xml` da `android.permission.INTERNET`
+Capacitor shablonidan qolgan. Telegram olib tashlangach ilova tarmoqqa
+umuman murojaat qilmaydi — ruxsat ishlatilmaydi. Uni olib tashlash
+"ma'lumot qurilmadan chiqmaydi" qoidasini kelishuv emas, OS darajasida
+majburiy qiladi. LEKIN Capacitor web fayllarni mahalliy server orqali
+beradi va WebView ruxsatsiz oq ekran ko'rsatishi mumkin — olib tashlashdan
+oldin haqiqiy telefonda sinab ko'rilishi SHART.
+
 Release build: `abiFilters` yoki App Bundle kerak. Debug APK 13 MB dan
 21 MB ga o'sdi — asosan to'rtta ABI uchun `libsqlcipher.so`, garchi
 shifrlash ishlatilmasa ham.
