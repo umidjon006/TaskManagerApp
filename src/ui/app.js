@@ -3,7 +3,7 @@
 import * as Charts from './charts.js';
 import { openDatabase, getNotifier, getFiles, onAppResume } from '../platform/index.js';
 import { createStore } from '../features/store.js';
-import { syncNotifications } from '../features/notifications.js';
+import { syncNotifications, getSyncStatus } from '../features/notifications.js';
 import { exportData, importData, parseBackup } from '../features/backup.js';
 import schemaSql from '../data/schema.sql?raw';
 
@@ -130,14 +130,50 @@ function withNotificationSync(s) {
 }
 
 // Debounce features/notifications.js da: ketma-ket chaqiruvlar bitta ishga birlashadi.
+// Xato jim yutilmaydi: release build'da konsol ko'rinmaydi, shuning uchun toast + Sozlamalardagi qator.
 function resyncNotifications() {
   if (!store || !notifier) return;
+  renderSyncDiagnostics();
   syncNotifications(store, notifier)
     .then((result) => {
       state.notifications = result;
       renderPermissionWarnings();
     })
-    .catch((err) => console.warn('Eslatmalarni jadvallab bo\'lmadi:', err));
+    .catch((err) => {
+      console.warn('Eslatmalarni jadvallab bo\'lmadi:', err);
+      toast(`Eslatmalar yangilanmadi: ${err && err.message ? err.message : err}`);
+    })
+    .finally(renderSyncDiagnostics);
+}
+
+function shortTime(iso) {
+  const d = new Date(iso);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? hhmm(d) : `${d.getDate()}-${MONTHS_SHORT[d.getMonth()]} ${hhmm(d)}`;
+}
+
+// Diagnostika: hozir nechta eslatma kutmoqda (plagin xotirasidan — haqiqiy holat) va oxirgi jadvallash.
+// Sozlamalar ekrani ochiq bo'lmasa — hech narsa qilmaydi.
+async function renderSyncDiagnostics() {
+  const row = $('syncDiag');
+  if (!row || !notifier) return;
+  const st = getSyncStatus();
+  let sub;
+  if (st.running) sub = `Jadvallanmoqda… (${shortTime(st.running.startedAt)} dan)`;
+  else if (st.lastError) sub = `Xato, ${shortTime(st.lastError.at)}: ${st.lastError.message}`;
+  else if (st.lastResult && st.lastResult.permission) sub = "Ruxsat yo'q — eslatmalar qo'yilmadi";
+  else if (st.lastSuccessAt) sub = `Oxirgi yangilanish: ${shortTime(st.lastSuccessAt)} · ${st.lastResult.scheduled} ta qo'yildi`;
+  else sub = 'Hali jadvallanmagan';
+  let count = '—';
+  try {
+    count = `${(await notifier.pending()).length} ta`;
+  } catch (err) {
+    console.warn(err);
+  }
+  const fresh = $('syncDiag');
+  if (!fresh) return;
+  fresh.querySelector('.row-text small').textContent = sub;
+  fresh.querySelector('.row-value').textContent = count;
 }
 
 // Birinchi ishga tushishda — bir marta. Rad etilsa — boshqa so'ralmaydi (sozlamalardan yoqiladi, 5c).
@@ -1128,8 +1164,14 @@ function renderSettings() {
         value: el('span', { class: 'row-value', text: 'Tanlash' }),
         onclick: () => openSystemSettings(() => notifier.openChannelSettings()),
       }),
+      // Bosilsa — darhol qayta jadvallaydi.
+      Object.assign(settingsRow({
+        iconName: 'i-clock', tint: 'tint-gray', text: 'Rejalashtirilgan', sub: '…',
+        value: el('span', { class: 'row-value', text: '…' }),
+        onclick: () => { haptic(5); resyncNotifications(); },
+      }), { id: 'syncDiag' }),
     ]),
-    el('p', { class: 'group-foot', text: 'Ovoz telefonning o\'z sozlamalarida tanlanadi.' }),
+    el('p', { class: 'group-foot', text: "Ovoz telefonning o'z sozlamalarida tanlanadi. «Rejalashtirilgan» qatorini bossangiz, eslatmalar qayta qo'yiladi." }),
   ] : [];
 
   body.replaceChildren(
@@ -1144,6 +1186,7 @@ function renderSettings() {
     el('p', { class: 'footer-note', text: "Vazifalar · Ma'lumotlar faqat shu qurilmada saqlanadi" }),
   );
   renderPermissionWarnings();
+  renderSyncDiagnostics();
 }
 
 async function saveMinImportance(e) {

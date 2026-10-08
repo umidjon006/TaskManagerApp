@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { openDatabase } from '../../src/platform/node.js';
 import { createStore } from '../../src/features/store.js';
-import { runSync, syncNotifications } from '../../src/features/notifications.js';
+import { runSync, syncNotifications, getSyncStatus } from '../../src/features/notifications.js';
 import * as web from '../../src/platform/web-notifications.js';
 
 const SCHEMA_SQL = readFileSync(new URL('../../src/data/schema.sql', import.meta.url), 'utf8');
@@ -104,4 +104,76 @@ test('syncNotifications: ishlar ustma-ust tushmaydi — cancelAll/schedule juftl
   await Promise.all([first, second]);
   const order = notifier.calls.filter((c) => c === 'cancelAll' || c === 'schedule');
   assert.deepEqual(order, ['cancelAll', 'schedule', 'cancelAll', 'schedule']);
+});
+
+// ---------- Xato yo'li: bitta muvaffaqiyatsiz ish keyingilarini to'xtatmasligi kerak ----------
+
+test("syncNotifications: ish xato tashlasa — keyingi chaqiruv baribir ishlaydi", async () => {
+  const store = await freshStore();
+  await store.createTask({ title: 'Sport', type: 'kunlik', importance: 6 });
+  const broken = fakeNotifier();
+  broken.schedule = async () => { throw new Error('plagin yiqildi'); };
+  await assert.rejects(syncNotifications(store, broken, NOW, { delay: 1 }), /plagin yiqildi/);
+  assert.equal(getSyncStatus().lastError.message, 'plagin yiqildi');
+  assert.equal(getSyncStatus().lastError.stage, 'schedule');
+  assert.equal(getSyncStatus().running, null);
+
+  const good = fakeNotifier();
+  const result = await syncNotifications(store, good, NOW, { delay: 1 });
+  assert.ok(result.scheduled > 0);
+  assert.deepEqual(good.calls, ['check', 'channel', 'cancelAll', 'schedule']);
+  assert.equal(getSyncStatus().lastError, null); // muvaffaqiyat xatoni tozalaydi
+  assert.ok(getSyncStatus().lastSuccessAt);
+});
+
+test("syncNotifications: ketma-ket bir necha xatodan keyin ham navbat tirik", async () => {
+  const store = await freshStore();
+  const broken = fakeNotifier();
+  broken.cancelAll = async () => { throw new Error('cancel xato'); };
+  for (let i = 0; i < 3; i += 1) {
+    await assert.rejects(syncNotifications(store, broken, NOW, { delay: 1 }), /cancel xato/);
+  }
+  const good = fakeNotifier();
+  await syncNotifications(store, good, NOW, { delay: 1 });
+  assert.ok(good.calls.includes('schedule'));
+});
+
+test("syncNotifications: native chaqiruv osilib qolsa — vaqt chegarasidan keyin xato, keyingisi ishlaydi", async () => {
+  const store = await freshStore();
+  await store.createTask({ title: 'Sport', type: 'kunlik', importance: 6 });
+  const stuck = fakeNotifier();
+  stuck.cancelAll = () => new Promise(() => {}); // hech qachon javob bermaydi
+  await assert.rejects(
+    syncNotifications(store, stuck, NOW, { delay: 1, timeout: 40 }),
+    /javob bermadi .*bosqich: eskilarini bekor qilish/,
+  );
+  assert.equal(getSyncStatus().running, null);
+  assert.equal(getSyncStatus().lastError.stage, 'cancel');
+
+  const good = fakeNotifier();
+  const result = await syncNotifications(store, good, NOW, { delay: 1, timeout: 40 });
+  assert.ok(result.scheduled > 0);
+  assert.ok(good.calls.includes('schedule'));
+});
+
+test('syncNotifications: debounce ichidagi xato ham barcha kutuvchilarga yetadi va timer qotmaydi', async () => {
+  const store = await freshStore();
+  const broken = fakeNotifier();
+  broken.checkPermissions = async () => { throw new Error('ruxsat xato'); };
+  const calls = Array.from({ length: 3 }, () => syncNotifications(store, broken, NOW, { delay: 5 }));
+  for (const c of calls) await assert.rejects(c, /ruxsat xato/);
+  const good = fakeNotifier();
+  await syncNotifications(store, good, NOW, { delay: 5 });
+  assert.ok(good.calls.includes('schedule'));
+});
+
+test("getSyncStatus: ruxsat yo'q bo'lsa — skipped natija, xato emas", async () => {
+  const store = await freshStore();
+  const denied = fakeNotifier({ notifications: 'denied' });
+  const result = await syncNotifications(store, denied, NOW, { delay: 1 });
+  assert.deepEqual([result.skipped, result.permission], [true, 'denied']);
+  const st = getSyncStatus();
+  assert.equal(st.lastResult.permission, 'denied');
+  assert.equal(st.running, null);
+  assert.ok(st.lastRunAt);
 });
